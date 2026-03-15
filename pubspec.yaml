@@ -1,0 +1,23 @@
+name: lableb_flutter_sdk
+description: A production-ready Flutter SDK for Lableb platform with full REST API integration
+version: 1.0.0
+homepage: https://github.com/lableb/lableb-flutter-sdk
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  dio: ^5.4.0
+  get_it: ^8.0.3
+  flutter_secure_storage:
+  json_annotation: ^4.8.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  build_runner: ^2.4.7
+  json_serializable: ^6.7.1
+  lints: ^3.0.0
+
