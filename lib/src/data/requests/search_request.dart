@@ -1,28 +1,22 @@
 /// Request model for search operations.
-/// 
+///
 /// This model is used to structure the request parameters when
 /// performing a search query.
 class SearchRequest {
   /// The search query string.
   final String query;
-  
+
   /// Optional filters to apply to the search.
   final Map<String, dynamic>? filters;
-  
-  /// Optional sort parameters.
-  final Map<String, String>? sort;
-  
+
+  /// Optional sort parameters (e.g., "tags desc", "price asc").
+  final String? sort;
+
   /// Page number for pagination (default: 1).
   final int page;
-  
+
   /// Number of results per page (default: 10).
   final int pageSize;
-  
-  /// Optional fields to return in results.
-  final List<String>? fields;
-  
-  /// Optional fields to highlight.
-  final List<String>? highlightFields;
 
   SearchRequest({
     required this.query,
@@ -30,35 +24,37 @@ class SearchRequest {
     this.sort,
     this.page = 1,
     this.pageSize = 10,
-    this.fields,
-    this.highlightFields,
   });
 
   /// Converts the [SearchRequest] to query parameters.
   Map<String, dynamic> toQueryParameters() {
     final params = <String, dynamic>{
       'q': query,
-      'page': page,
-      'page_size': pageSize,
+      'limit': pageSize,
+      'skip': (page - 1) * pageSize,
     };
 
     if (filters != null && filters!.isNotEmpty) {
-      params['filters'] = filters;
+      // Flatten filters as individual query parameters
+      filters!.forEach((key, value) {
+        if (value is Map<String, dynamic>) {
+          // Handle range filters like {"year": {"from": 2021, "to": 2022}}
+          if (value.containsKey('from')) {
+            params['${key}_from'] = value['from'];
+          }
+          if (value.containsKey('to')) {
+            params['${key}_to'] = value['to'];
+          }
+        } else {
+          params[key] = value;
+        }
+      });
     }
 
     if (sort != null && sort!.isNotEmpty) {
       params['sort'] = sort;
     }
 
-    if (fields != null && fields!.isNotEmpty) {
-      params['fields'] = fields!.join(',');
-    }
-
-    if (highlightFields != null && highlightFields!.isNotEmpty) {
-      params['highlight_fields'] = highlightFields!.join(',');
-    }
-
     return params;
   }
 }
-

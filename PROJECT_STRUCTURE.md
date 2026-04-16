@@ -10,52 +10,41 @@ lableb_flutter_sdk/
 │       ├── api/
 │       │   ├── api_client.dart           # HTTP client wrapper with error handling
 │       │   └── interceptors/
-│       │       ├── auth_interceptor.dart # Authentication interceptor
 │       │       └── logging_interceptor.dart # Request/response logging
-│       ├── core/
-│       │   └── pagination_model.dart      # Pagination data model
 │       ├── data/
 │       │   ├── models/                   # Data models (DTOs)
-│       │   │   ├── index_model.dart
-│       │   │   ├── search_model.dart
-│       │   │   ├── autocomplete_model.dart
-│       │   │   ├── recommender_model.dart
-│       │   │   └── feedback_model.dart
+│       │   │   ├── document_model.dart
+│       │   │   ├── facet_model.dart
+│       │   │   ├── feedback_event_model.dart
+│       │   │   └── suggested_filters_model.dart
 │       │   ├── requests/                 # Request models
-│       │   │   ├── index_request.dart
-│       │   │   ├── search_request.dart
 │       │   │   ├── autocomplete_request.dart
 │       │   │   ├── recommender_request.dart
-│       │   │   └── feedback_request.dart
+│       │   │   └── search_request.dart
 │       │   ├── responses/                 # Response models
-│       │   │   ├── index_response.dart
-│       │   │   ├── search_response.dart
-│       │   │   ├── autocomplete_response.dart
-│       │   │   ├── recommender_response.dart
-│       │   │   └── feedback_response.dart
+│       │   │   └── matching_response.dart
 │       │   └── repositories/             # Repository implementations
-│       │       ├── index_repository_impl.dart
-│       │       ├── search_repository_impl.dart
 │       │       ├── autocomplete_repository_impl.dart
+│       │       ├── feedback_repository_impl.dart
+│       │       ├── index_repository_impl.dart
 │       │       ├── recommender_repository_impl.dart
-│       │       └── feedback_repository_impl.dart
+│       │       └── search_repository_impl.dart
+│       ├── di/
+│       │   └── locator.dart              # Dependency injection setup
 │       ├── domain/
 │       │   ├── entities/                 # Domain entities
-│       │   │   ├── index_entity.dart
-│       │   │   ├── search_entity.dart
-│       │   │   ├── autocomplete_entity.dart
-│       │   │   ├── recommender_entity.dart
-│       │   │   └── feedback_entity.dart
+│       │   │   └── document_entity.dart
 │       │   └── repositories/              # Abstract repository interfaces
-│       │       ├── index_repository.dart
-│       │       ├── search_repository.dart
 │       │       ├── autocomplete_repository.dart
+│       │       ├── feedback_repository.dart
+│       │       ├── index_repository.dart
 │       │       ├── recommender_repository.dart
-│       │       └── feedback_repository.dart
+│       │       └── search_repository.dart
 │       ├── exceptions/
 │       │   └── exceptions.dart           # Custom exception classes
 │       └── sdk_initializer.dart           # Main SDK initialization class
 ├── example/
+│   ├── pubspec.yaml                      # Example app dependencies (for local development)
 │   └── main.dart                         # Complete usage examples
 ├── pubspec.yaml                          # Package dependencies
 ├── analysis_options.yaml                 # Linter configuration
@@ -80,8 +69,8 @@ lableb_flutter_sdk/
 - **ApiClient**: HTTP client wrapper using Dio
 - **Interceptors**: Request/response interceptors for auth and logging
 
-### 4. Core Layer (`lib/src/core/`)
-- **Utilities**: Shared utilities like pagination models
+### 4. DI Layer (`lib/src/di/`)
+- **Locator**: Dependency injection setup using GetIt
 
 ### 5. Exceptions (`lib/src/exceptions/`)
 - **Custom Exceptions**: Domain-specific exception classes
@@ -89,10 +78,8 @@ lableb_flutter_sdk/
 ## API Endpoints Implemented
 
 ### ✅ Index/Data Ingestion
-- `POST /index` - Index a single item
-- `POST /index/batch` - Index multiple items
-- `PUT /index/:id` - Update an indexed item
-- `DELETE /index/:id` - Delete an indexed item
+- `POST /index` - Upload documents
+- `DELETE /index` - Remove documents
 
 ### ✅ Search
 - `GET /search` - Perform search with query, filters, sorting, and pagination
@@ -101,12 +88,12 @@ lableb_flutter_sdk/
 - `GET /autocomplete` - Get autocomplete suggestions
 
 ### ✅ Recommender
-- `POST /recommender` - Get personalized recommendations
+- `GET /recommend` - Get personalized recommendations
 
 ### ✅ Feedback
-- `POST /feedback/search` - Submit search feedback
-- `POST /feedback/autocomplete` - Submit autocomplete feedback
-- `POST /feedback/recommender` - Submit recommender feedback
+- `POST /search/feedback/events` - Submit search feedback
+- `POST /autocomplete/feedback/events` - Submit autocomplete feedback
+- `POST /recommend/feedback/events` - Submit recommender feedback
 
 ## Key Features
 
@@ -143,11 +130,21 @@ import 'package:lableb_flutter_sdk/lableb_flutter_sdk.dart';
 // Initialize SDK
 final sdk = LablebSDK(
   baseUrl: 'https://api.lableb.com',
-  apiKey: 'your-api-key',
+  apiKeySearch: 'your-search-api-key',
+  apiKeyIndex: 'your-index-api-key',
+  projectId: 'your-project-id',
+  indexName: 'your-index-name',
 );
 
 // Index data
-await sdk.index.indexItem(item);
+await sdk.index.uploadDocuments([
+  {
+    'id': 'item-1',
+    'title': 'Example Product',
+    'description': 'Product description',
+    'price': 99.99,
+  }
+]);
 
 // Search
 final results = await sdk.search.search(query: 'example');
@@ -156,13 +153,15 @@ final results = await sdk.search.search(query: 'example');
 final suggestions = await sdk.autocomplete.getSuggestions(query: 'ex');
 
 // Recommendations
-final recommendations = await sdk.recommender.getRecommendations(userId: 'user-1');
+final recommendations = await sdk.recommender.getRecommendations();
 
 // Feedback
-await sdk.feedback.submitSearchFeedback(
-  query: 'example',
-  resultId: 'item-1',
-  feedbackValue: 'positive',
+await sdk.feedback.submitSearchFeedbackEvent(
+  SearchFeedbackEvent(
+    eventType: FeedbackEventType.click,
+    query: 'example',
+    itemId: 'item-1',
+  ),
 );
 ```
 

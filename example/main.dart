@@ -1,7 +1,7 @@
 import 'package:lableb_flutter_sdk/lableb_flutter_sdk.dart';
 
 /// Example usage of the Lableb Flutter SDK.
-/// 
+///
 /// This file demonstrates how to use all the main features of the SDK
 /// including initialization, indexing, searching, autocomplete,
 /// recommendations, and feedback submission.
@@ -10,10 +10,13 @@ void main() async {
   // 1. SDK INITIALIZATION
   // ============================================
   print('=== Initializing SDK ===');
-  
+
   final sdk = LablebSDK(
     baseUrl: 'https://api.lableb.com', // Replace with your actual base URL
-    apiKey: 'your-api-key-here', // Replace with your actual API key
+    apiKeyIndex: 'your-index-api-key', // Replace with your actual API key
+    apiKeySearch: 'your-search-api-key', // Replace with your actual API key
+    projectId: 'your-project-id', // Replace with your actual API key
+    indexName: 'your-index-name',
     enableLogging: true, // Enable logging for debugging
     connectTimeout: const Duration(seconds: 30),
     receiveTimeout: const Duration(seconds: 30),
@@ -21,50 +24,29 @@ void main() async {
 
   print('SDK initialized successfully!\n');
 
-  // ============================================
-  // 2. INDEXING DATA
-  // ============================================
+  // // ============================================
+  // // 2. INDEXING DATA
+  // // ============================================
   print('=== Indexing Data ===');
-  
+
   try {
-    // Index a single item
-    final item = IndexEntity(
-      id: 'item-1',
-      data: {
-        'title': 'Example Product',
-        'description': 'This is an example product description',
-        'price': 99.99,
-        'category': 'electronics',
-      },
-    );
-
-    final indexedItem = await sdk.index.indexItem(item);
-    print('Item indexed: ${indexedItem.id}');
-
-    // Index multiple items in batch
-    final batchItems = [
-      IndexEntity(
-        id: 'item-2',
-        data: {
-          'title': 'Another Product',
-          'description': 'Another product description',
-          'price': 149.99,
-          'category': 'electronics',
-        },
-      ),
-      IndexEntity(
-        id: 'item-3',
-        data: {
-          'title': 'Third Product',
-          'description': 'Third product description',
-          'price': 79.99,
-          'category': 'clothing',
-        },
-      ),
+    List<Map<String, dynamic>> documents = [
+      {
+        "id": 1111111,
+        "title": "Lableb is awesome",
+        "description": "example content goes here",
+        "image": "https://mysite.com/static/images/lableb.png",
+        "url": "https://mysite.com/index/lableb-is-awesome",
+        "category": ["Search", "Cloud"],
+        "date": "2011-07-01T10:50:23Z"
+      }
     ];
 
-    final indexedItems = await sdk.index.indexBatch(batchItems);
-    print('Batch indexed: ${indexedItems.length} items\n');
+    await sdk.index.uploadDocuments(documents);
+    print('Item indexed');
+
+    await sdk.index.removeDocuments(["1111111"]);
+    print('Item deleted');
   } catch (e) {
     print('Error indexing data: $e\n');
   }
@@ -73,33 +55,33 @@ void main() async {
   // 3. SEARCH OPERATIONS
   // ============================================
   print('=== Performing Search ===');
-  
+
   try {
     // Basic search
     final searchResult = await sdk.search.search(
-      query: 'product',
-      page: 1,
-      pageSize: 10,
-    );
+        query: '*',
+        page: 1,
+        pageSize: 10,
+        userId: 'test', // Optional
+        userIp: '192.168.1.1', // Optional
+        userCountry: 'uae', // Optional
+        requestSource: 'web', // Optional
+        sessionId: 'test-111' // Optional
+        );
 
     print('Search Results:');
-    print('Total results: ${searchResult.totalResults}');
-    print('Current page: ${searchResult.pagination.currentPage}');
-    print('Total pages: ${searchResult.pagination.totalPages}');
-    
-    for (final result in searchResult.results) {
-      print('  - ${result.id}: ${result.data['title']} (score: ${result.score})');
-    }
+    print('Total results: ${searchResult.totalResults}\n');
+
     print('');
 
     // Search with filters
     final filteredSearch = await sdk.search.search(
-      query: 'product',
+      query: '*',
       filters: {
         'category': 'electronics',
-        'price': {'gte': 50, 'lte': 200},
+        'tags': 'مقاولات وتعهدات',
+        'price': {'from': 50, 'to': 200},
       },
-      sort: {'price': 'asc'},
       page: 1,
       pageSize: 5,
     );
@@ -123,17 +105,25 @@ void main() async {
   // 4. AUTOCOMPLETE OPERATIONS
   // ============================================
   print('=== Getting Autocomplete Suggestions ===');
-  
+
   try {
     final suggestions = await sdk.autocomplete.getSuggestions(
-      query: 'prod',
-      limit: 5,
-    );
+        query: '*',
+        filters: {
+          // 'category': 'electronics',
+          'tags': 'مقاولات وتعهدات',
+          'price': {'gte': 50, 'lte': 200},
+        },
+        limit: 5,
+        userId: 'test', // Optional
+        userIp: '192.168.1.1', // Optional
+        userCountry: 'uae', // Optional
+        requestSource: 'web', // Optional
+        sessionId: 'test-111' // Optional
+        );
 
     print('Autocomplete Suggestions:');
-    for (final suggestion in suggestions) {
-      print('  - ${suggestion.text} (score: ${suggestion.score})');
-    }
+    print('Total results: ${suggestions.totalResults}\n');
     print('');
   } catch (e) {
     print('Error getting autocomplete: $e\n');
@@ -143,34 +133,21 @@ void main() async {
   // 5. RECOMMENDATION OPERATIONS
   // ============================================
   print('=== Getting Recommendations ===');
-  
+
   try {
-    // User-based recommendations
-    final userRecommendations = await sdk.recommender.getRecommendations(
-      userId: 'user-123',
-      limit: 10,
-      context: {
-        'category': 'electronics',
-      },
-    );
+    // recommendations
+    final recommendations = await sdk.recommender.getRecommendations(
+        itemId: '101',
+        limit: 10,
+        userId: 'test', // Optional
+        userIp: '192.168.1.1', // Optional
+        userCountry: 'uae', // Optional
+        requestSource: 'web', // Optional
+        sessionId: 'test-111' // Optional
+        );
 
-    print('User Recommendations:');
-    for (final recommendation in userRecommendations) {
-      print('  - ${recommendation.id}: ${recommendation.data['title']} '
-          '(score: ${recommendation.score})');
-    }
-    print('');
-
-    // Item-based recommendations
-    final itemRecommendations = await sdk.recommender.getRecommendations(
-      itemId: 'item-1',
-      limit: 5,
-    );
-
-    print('Item-based Recommendations:');
-    for (final recommendation in itemRecommendations) {
-      print('  - ${recommendation.id}: ${recommendation.data['title']}');
-    }
+    print('Recommendations:');
+    print('Total results: ${recommendations.totalResults}\n');
     print('');
   } catch (e) {
     print('Error getting recommendations: $e\n');
@@ -180,101 +157,58 @@ void main() async {
   // 6. FEEDBACK SUBMISSION
   // ============================================
   print('=== Submitting Feedback ===');
-  
+
   try {
     // Submit search feedback event (NEW API: click/add_to_cart/purchase)
-    await sdk.feedback.submitSearchFeedbackEvent(
-      project: 'wptest',
-      collection: 'posts',
-      handler: 'default',
+    await sdk.feedback.submitSearchFeedbackEvent(new SearchFeedbackEvent(
       query: 'product',
-      eventType: SearchFeedbackEventType.click,
+      eventType: FeedbackEventType.click,
       itemId: 'item-1',
-      itemOrder: 1,
-      itemPrice: 95.5,
+      itemOrder: '1',
+      itemPrice: '95.5',
+      url: 'http://mysite.com/posts/lableb-post',
+      sessionId: '1c4Hb23',
+      userId: 'user-123',
+      country: 'DE',
+      userIp: '192.111.24.21',
+    ));
+    print('Search feedback event submitted successfully');
+
+    // Submit autocomplete feedback
+    await sdk.feedback
+        .submitAutocompleteFeedbackEvent(new AutocompleteFeedbackEvent(
+      query: 'product',
+      eventType: FeedbackEventType.click,
+      itemId: 'item-1',
+      itemOrder: '1',
+      itemPrice: '95.5',
       url: 'http://mysite.com/posts/lableb-post',
       sessionId: '1c4Hb23',
       userId: 'user-123',
       userIp: '192.111.24.21',
-      userCountry: 'DE',
-    );
-    print('Search feedback event submitted successfully');
-
-    // Submit autocomplete feedback
-    await sdk.feedback.submitAutocompleteFeedback(
-      query: 'prod',
-      suggestion: 'product',
-      feedbackValue: 'clicked',
-    );
+      country: 'DE',
+    ));
     print('Autocomplete feedback submitted successfully');
 
     // Submit recommender feedback
-    await sdk.feedback.submitRecommenderFeedback(
-      recommendationId: 'item-2',
-      feedbackValue: 'positive',
+    await sdk.feedback.submitRecommendFeedbackEvent(new RecommendFeedbackEvent(
+      eventType: FeedbackEventType.addToCart,
+      sourceId: 'item-1',
+      sourceUrl: 'http://mysite.com/posts/lableb-post',
+      sourceTitle: "test item 1",
+      targetId: 'item-2',
+      targetUrl: 'http://mysite.com/posts/lableb-post2',
+      targetTitle: "test item 2",
+      itemOrder: '1',
+      itemPrice: '95.5',
+      sessionId: '1c4Hb23',
       userId: 'user-123',
-      metadata: {
-        'purchased': true,
-      },
-    );
+      userIp: '192.111.24.21',
+      country: 'DE',
+      cartId: 'cart-456',
+    ));
     print('Recommender feedback submitted successfully\n');
   } catch (e) {
     print('Error submitting feedback: $e\n');
   }
-
-  // ============================================
-  // 7. ERROR HANDLING EXAMPLES
-  // ============================================
-  print('=== Error Handling Examples ===');
-  
-  try {
-    // This will likely fail if the item doesn't exist
-    await sdk.index.deleteItem('non-existent-item');
-  } on NotFoundException catch (e) {
-    print('Item not found: ${e.message}');
-  } on UnauthorizedException catch (e) {
-    print('Unauthorized access: ${e.message}');
-  } on NetworkException catch (e) {
-    print('Network error: ${e.message}');
-  } on TimeoutException catch (e) {
-    print('Request timed out: ${e.message}');
-  } on ValidationException catch (e) {
-    print('Validation error: ${e.message}');
-  } on ServerException catch (e) {
-    print('Server error: ${e.message}');
-  } on LablebException catch (e) {
-    print('Lableb error: ${e.message}');
-  } catch (e) {
-    print('Unexpected error: $e');
-  }
-
-  // ============================================
-  // 8. UPDATE AND DELETE OPERATIONS
-  // ============================================
-  print('\n=== Update and Delete Operations ===');
-  
-  try {
-    // Update an existing item
-    final updatedItem = IndexEntity(
-      id: 'item-1',
-      data: {
-        'title': 'Updated Product',
-        'description': 'Updated description',
-        'price': 89.99,
-        'category': 'electronics',
-      },
-    );
-
-    final result = await sdk.index.updateItem(updatedItem);
-    print('Item updated: ${result.id}');
-
-    // Delete an item
-    await sdk.index.deleteItem('item-3');
-    print('Item deleted successfully');
-  } catch (e) {
-    print('Error in update/delete operations: $e');
-  }
-
-  print('\n=== Example completed ===');
 }
-

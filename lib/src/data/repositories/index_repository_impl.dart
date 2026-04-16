@@ -1,12 +1,9 @@
 import '../../api/api_client.dart';
-import '../../domain/entities/index_entity.dart';
 import '../../domain/repositories/index_repository.dart';
-import '../models/index_model.dart';
-import '../requests/index_request.dart';
-import '../responses/index_response.dart';
+import 'dart:convert';
 
 /// Implementation of [IndexRepository] for data indexing operations.
-/// 
+///
 /// This repository handles all communication with the index API endpoints.
 class IndexRepositoryImpl implements IndexRepository {
   /// The API client for making HTTP requests.
@@ -15,102 +12,30 @@ class IndexRepositoryImpl implements IndexRepository {
   IndexRepositoryImpl(this._apiClient);
 
   @override
-  Future<IndexEntity> indexItem(IndexEntity item) async {
+  Future<void> uploadDocuments(List<Map<String, dynamic>> documents) async {
     try {
-      final model = IndexModel.fromEntity(item);
-      final request = IndexRequest(items: [model]);
-      
-      final response = await _apiClient.post(
-        '/index',
-        data: request.toJson(),
+      await _apiClient.post(
+        '/documents',
+        data: jsonEncode(documents),
+        queryParameters: {'apikey': _apiClient.apiKeyIndex},
       );
 
-      final indexResponse = IndexResponse.fromJson(
-        response.data as Map<String, dynamic>,
-      );
-
-      if (!indexResponse.success) {
-        throw Exception(indexResponse.message);
-      }
-
-      if (indexResponse.items != null && indexResponse.items!.isNotEmpty) {
-        return indexResponse.items!.first.toEntity();
-      }
-
-      return item;
+      // Assuming success if no exception
     } catch (e) {
       rethrow;
     }
   }
 
   @override
-  Future<List<IndexEntity>> indexBatch(List<IndexEntity> items) async {
+  Future<void> removeDocuments(List<String> documentIds) async {
     try {
-      final models = items.map((item) => IndexModel.fromEntity(item)).toList();
-      final request = IndexRequest(items: models);
-      
-      final response = await _apiClient.post(
-        '/index/batch',
-        data: request.toJson(),
+      await _apiClient.delete(
+        '/documents',
+        data: jsonEncode(documentIds),
+        queryParameters: {'apikey': _apiClient.apiKeyIndex},
       );
-
-      final indexResponse = IndexResponse.fromJson(
-        response.data as Map<String, dynamic>,
-      );
-
-      if (!indexResponse.success) {
-        throw Exception(indexResponse.message);
-      }
-
-      if (indexResponse.items != null) {
-        return indexResponse.items!.map((item) => item.toEntity()).toList();
-      }
-
-      return items;
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  @override
-  Future<IndexEntity> updateItem(IndexEntity item) async {
-    try {
-      final model = IndexModel.fromEntity(item);
-      final request = IndexRequest(
-        items: [model],
-        operation: 'update',
-      );
-      
-      final response = await _apiClient.put(
-        '/index/${item.id}',
-        data: request.toJson(),
-      );
-
-      final indexResponse = IndexResponse.fromJson(
-        response.data as Map<String, dynamic>,
-      );
-
-      if (!indexResponse.success) {
-        throw Exception(indexResponse.message);
-      }
-
-      if (indexResponse.items != null && indexResponse.items!.isNotEmpty) {
-        return indexResponse.items!.first.toEntity();
-      }
-
-      return item;
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  @override
-  Future<void> deleteItem(String id) async {
-    try {
-      await _apiClient.delete('/index/$id');
     } catch (e) {
       rethrow;
     }
   }
 }
-

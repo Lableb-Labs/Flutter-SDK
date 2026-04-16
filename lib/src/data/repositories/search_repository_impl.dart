@@ -1,10 +1,10 @@
 import '../../api/api_client.dart';
 import '../../domain/repositories/search_repository.dart';
 import '../requests/search_request.dart';
-import '../responses/search_response.dart';
+import '../../data/responses/matching_response.dart';
 
 /// Implementation of [SearchRepository] for search operations.
-/// 
+///
 /// This repository handles all communication with the search API endpoints.
 class SearchRepositoryImpl implements SearchRepository {
   /// The API client for making HTTP requests.
@@ -13,12 +13,18 @@ class SearchRepositoryImpl implements SearchRepository {
   SearchRepositoryImpl(this._apiClient);
 
   @override
-  Future<SearchResult> search({
+  Future<MatchingResponse> search({
+    String? handler,
     required String query,
     Map<String, dynamic>? filters,
-    Map<String, String>? sort,
+    String? sort,
     int page = 1,
     int pageSize = 10,
+    String? sessionId,
+    String? userId,
+    String? userIp,
+    String? userCountry,
+    String? requestSource,
   }) async {
     try {
       final request = SearchRequest(
@@ -29,26 +35,28 @@ class SearchRepositoryImpl implements SearchRepository {
         pageSize: pageSize,
       );
 
+      final queryParams = request.toQueryParameters();
+      if (sessionId != null) queryParams['session_id'] = sessionId;
+      if (userId != null) queryParams['user_id'] = userId;
+      if (userIp != null) queryParams['user_ip'] = userIp;
+      if (userCountry != null) queryParams['user_country'] = userCountry;
+      if (requestSource != null) queryParams['request_source'] = requestSource;
+
+      final path =
+          (handler?.isNotEmpty ?? false) ? '/search/$handler' : '/search';
+
       final response = await _apiClient.get(
-        '/search',
-        queryParameters: request.toQueryParameters(),
+        path,
+        queryParameters: queryParams,
       );
 
-      final searchResponse = SearchResponse.fromJson(
+      final searchResponse = MatchingResponse.fromJson(
         response.data as Map<String, dynamic>,
       );
 
-      return SearchResult(
-        results: searchResponse.results
-            .map((model) => model.toEntity())
-            .toList(),
-        pagination: searchResponse.pagination,
-        totalResults: searchResponse.totalResults,
-        executionTime: searchResponse.executionTime,
-      );
+      return searchResponse;
     } catch (e) {
       rethrow;
     }
   }
 }
-

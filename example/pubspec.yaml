@@ -1,0 +1,16 @@
+name: lableb_flutter_sdk_example
+description: Example usage of the Lableb Flutter SDK
+version: 1.0.0
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  lableb_flutter_sdk:
+    path: ../
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter

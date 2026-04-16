@@ -1,11 +1,10 @@
 import '../../api/api_client.dart';
-import '../../domain/entities/autocomplete_entity.dart';
 import '../../domain/repositories/autocomplete_repository.dart';
 import '../requests/autocomplete_request.dart';
-import '../responses/autocomplete_response.dart';
+import '../responses/matching_response.dart';
 
 /// Implementation of [AutocompleteRepository] for autocomplete operations.
-/// 
+///
 /// This repository handles all communication with the autocomplete API endpoints.
 class AutocompleteRepositoryImpl implements AutocompleteRepository {
   /// The API client for making HTTP requests.
@@ -14,10 +13,16 @@ class AutocompleteRepositoryImpl implements AutocompleteRepository {
   AutocompleteRepositoryImpl(this._apiClient);
 
   @override
-  Future<List<AutocompleteEntity>> getSuggestions({
+  Future<MatchingResponse> getSuggestions({
+    String? handler,
     required String query,
     int limit = 10,
     Map<String, dynamic>? filters,
+    String? sessionId,
+    String? userId,
+    String? userIp,
+    String? userCountry,
+    String? requestSource,
   }) async {
     try {
       final request = AutocompleteRequest(
@@ -26,21 +31,29 @@ class AutocompleteRepositoryImpl implements AutocompleteRepository {
         filters: filters,
       );
 
+      final queryParams = request.toQueryParameters();
+      if (sessionId != null) queryParams['session_id'] = sessionId;
+      if (userId != null) queryParams['user_id'] = userId;
+      if (userIp != null) queryParams['user_ip'] = userIp;
+      if (userCountry != null) queryParams['user_country'] = userCountry;
+      if (requestSource != null) queryParams['request_source'] = requestSource;
+
+      final path = (handler?.isNotEmpty ?? false)
+          ? '/autocomplete/$handler'
+          : '/autocomplete';
+
       final response = await _apiClient.get(
-        '/autocomplete',
-        queryParameters: request.toQueryParameters(),
+        path,
+        queryParameters: queryParams,
       );
 
-      final autocompleteResponse = AutocompleteResponse.fromJson(
+      final autocompleteResponse = MatchingResponse.fromJson(
         response.data as Map<String, dynamic>,
       );
 
-      return autocompleteResponse.suggestions
-          .map((model) => model.toEntity())
-          .toList();
+      return autocompleteResponse;
     } catch (e) {
       rethrow;
     }
   }
 }
-

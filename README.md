@@ -8,7 +8,7 @@ A production-ready Flutter SDK for integrating with the Lableb platform. This SD
 - Index/Data ingestion
 - Search with filtering, sorting, and pagination
 - Autocomplete suggestions
-- Personalized recommendations
+- Recommendations
 - Feedback submission (search, autocomplete, recommender)
 
 ✅ **Clean Architecture**
@@ -33,11 +33,12 @@ A production-ready Flutter SDK for integrating with the Lableb platform. This SD
 
 ## Installation
 
-Add this to your `pubspec.yaml`:
+Add this package to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  lableb_flutter_sdk: ^1.0.0
+  lableb_flutter_sdk:
+    path: ../
 ```
 
 Then run:
@@ -45,6 +46,8 @@ Then run:
 ```bash
 flutter pub get
 ```
+
+> Note: For publishable packages, replace the local `path` dependency with a hosted version once released.
 
 ## Quick Start
 
@@ -55,37 +58,39 @@ import 'package:lableb_flutter_sdk/lableb_flutter_sdk.dart';
 
 final sdk = LablebSDK(
   baseUrl: 'https://api.lableb.com',
-  apiKey: 'your-api-key-here',
+  apiKeySearch: 'your-search-api-key',
+  apiKeyIndex: 'your-index-api-key',
+  projectId: 'your-project-id',
+  indexName: 'your-index-name',
   enableLogging: true, // Optional: for debugging
 );
 ```
 
-### 2. Index Data
+### 2. Upload Documents
 
 ```dart
-final item = IndexEntity(
-  id: 'item-1',
-  data: {
+await sdk.index.uploadDocuments([
+  {
+    'id': 'item-1',
     'title': 'Example Product',
     'description': 'Product description',
     'price': 99.99,
-  },
-);
-
-await sdk.index.indexItem(item);
+  }
+]);
 ```
 
 ### 3. Perform Search
 
 ```dart
-final result = await sdk
-    .searchRequest()
-    .forQuery('product')
-    .withFilters({'category': 'electronics'})
-    .paginate(page: 1, pageSize: 10)
-    .send();
+final result = await sdk.search.search(
+  query: 'product',
+  filters: {'category': 'electronics'},
+  sort: 'price asc',
+  page: 1,
+  pageSize: 10,
+);
 
-print('Found ${result.totalResults} results');
+print('Found ${result.results.length} results');
 for (final item in result.results) {
   print('${item.id}: ${item.data['title']}');
 }
@@ -98,60 +103,44 @@ final suggestions = await sdk.autocomplete.getSuggestions(
   query: 'prod',
   limit: 5,
 );
-
-for (final suggestion in suggestions) {
-  print(suggestion.text);
-}
 ```
 
 ### 5. Get Recommendations
 
 ```dart
-final recommendations = await sdk
-    .recommendations()
-    .fromUser('user-123')
-    .limit(10)
-    .send();
-
-for (final rec in recommendations) {
-  print('${rec.id}: ${rec.data['title']}');
-}
+final recommendations = await sdk.recommender.getRecommendations(
+  limit: 10,
+  itemId: 'user-123',
+);
 ```
 
 ### 6. Submit Feedback
 
 ```dart
-// Search feedback events (click/add_to_cart/purchase) using the fluent builder
-await sdk
-    .searchFeedbackEvent()
-    .forCollection(project: 'wptest', collection: 'posts', handler: 'default')
-    .forQuery('product')
-    .event(SearchFeedbackEventType.click)
-    .forItem(id: 'item-1', order: 1, price: 95.5)
-    .withUrl('http://mysite.com/posts/clicked-document')
-    .fromUser(
-      id: '1',
-      sessionId: '1c4Hb23',
-      ip: '192.111.24.21',
-      country: 'DE',
-    )
-    .send();
+await sdk.feedback.submitSearchFeedbackEvent(
+  SearchFeedbackEvent(
+    eventType: FeedbackEventType.click,
+    query: 'product',
+    itemId: 'item-1',
+    sessionId: 'session-123',
+  ),
+);
 
-// Autocomplete feedback
-await sdk
-    .autocompleteFeedback()
-    .forQuery('prod')
-    .forSuggestion('product')
-    .value('clicked')
-    .send();
+await sdk.feedback.submitAutocompleteFeedbackEvent(
+  AutocompleteFeedbackEvent(
+    eventType: FeedbackEventType.click,
+    query: 'prod',
+    itemId: 'suggestion-1',
+  ),
+);
 
-// Recommender feedback
-await sdk
-    .recommenderFeedback()
-    .forRecommendation('item-2')
-    .value('positive')
-    .fromUser(id: 'user-123')
-    .send();
+await sdk.feedback.submitRecommendFeedbackEvent(
+  RecommendFeedbackEvent(
+    eventType: FeedbackEventType.addToCart,
+    sourceId: 'item-1',
+    targetId: 'item-2',
+  ),
+);
 ```
 
 ## Error Handling
@@ -178,23 +167,15 @@ try {
 
 ## Advanced Configuration
 
-### Custom Authentication
-
-```dart
-final sdk = LablebSDK(
-  baseUrl: 'https://api.lableb.com',
-  apiKey: 'your-api-key',
-  authType: AuthType.apiKey, // or AuthType.bearer (default)
-  customHeaderName: 'X-API-Key', // for custom headers
-);
-```
-
 ### Custom Timeouts
 
 ```dart
 final sdk = LablebSDK(
   baseUrl: 'https://api.lableb.com',
-  apiKey: 'your-api-key',
+  apiKeySearch: 'your-search-api-key',
+  apiKeyIndex: 'your-index-api-key',
+  projectId: 'your-project-id',
+  indexName: 'your-index-name',
   connectTimeout: const Duration(seconds: 60),
   receiveTimeout: const Duration(seconds: 60),
   sendTimeout: const Duration(seconds: 60),
@@ -206,7 +187,10 @@ final sdk = LablebSDK(
 ```dart
 final sdk = LablebSDK(
   baseUrl: 'https://api.lableb.com',
-  apiKey: 'your-api-key',
+  apiKeySearch: 'your-search-api-key',
+  apiKeyIndex: 'your-index-api-key',
+  projectId: 'your-project-id',
+  indexName: 'your-index-name',
   defaultHeaders: {
     'X-Custom-Header': 'value',
   },

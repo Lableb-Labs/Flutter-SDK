@@ -1,6 +1,5 @@
 import 'package:dio/dio.dart';
 import '../exceptions/exceptions.dart';
-import 'interceptors/auth_interceptor.dart';
 import 'interceptors/logging_interceptor.dart';
 
 /// Abstract base for the SDK API client.
@@ -9,7 +8,8 @@ import 'interceptors/logging_interceptor.dart';
 abstract interface class ApiClientBase {
   Dio get dio;
   String get baseUrl;
-  String get apiKey;
+  String get apiKeySearch;
+  String get apiKeyIndex;
   Duration get connectTimeout;
   Duration get receiveTimeout;
   Duration get sendTimeout;
@@ -50,44 +50,68 @@ abstract interface class ApiClientBase {
 }
 
 /// API client for making HTTP requests to the Lableb API.
-/// 
+///
 /// This class wraps Dio and provides a clean interface for making
 /// authenticated requests with proper error handling and retry logic.
 class ApiClient implements ApiClientBase {
   /// The underlying Dio instance.
   final Dio _dio;
-  
+
   /// Base URL for the API.
   @override
   final String baseUrl;
-  
-  /// API key for authentication.
+
+  /// API key used for search and all non-index requests.
   @override
-  final String apiKey;
-  
+  final String apiKeySearch;
+
+  /// API key used for index create/update/delete requests.
+  @override
+  final String apiKeyIndex;
+
+  /// Optional project identifier used to prefix all relative endpoints.
+  final String? projectId;
+
+  /// Optional index identifier used to prefix all relative endpoints.
+  final String? indexName;
+
   /// Connection timeout in milliseconds.
   @override
   final Duration connectTimeout;
-  
+
   /// Receive timeout in milliseconds.
   @override
   final Duration receiveTimeout;
-  
+
   /// Send timeout in milliseconds.
   @override
   final Duration sendTimeout;
 
+  final String _pathPrefix;
+
+  static String _buildPathPrefix(String? projectId, String? indexName) {
+    if (projectId == null ||
+        projectId.trim().isEmpty ||
+        indexName == null ||
+        indexName.trim().isEmpty) {
+      return '';
+    }
+    return '/v2/projects/${projectId.trim()}/indices/${indexName.trim()}';
+  }
+
   ApiClient({
     required this.baseUrl,
-    required this.apiKey,
+    required this.apiKeySearch,
+    required this.apiKeyIndex,
+    this.projectId,
+    this.indexName,
     this.connectTimeout = const Duration(seconds: 30),
     this.receiveTimeout = const Duration(seconds: 30),
     this.sendTimeout = const Duration(seconds: 30),
     bool enableLogging = false,
-    AuthType authType = AuthType.bearer,
-    String? customHeaderName,
     Map<String, String>? defaultHeaders,
-  }) : _dio = Dio(
+  })  : _pathPrefix = _buildPathPrefix(projectId, indexName),
+        _dio = Dio(
           BaseOptions(
             baseUrl: baseUrl,
             connectTimeout: connectTimeout,
@@ -96,15 +120,6 @@ class ApiClient implements ApiClientBase {
             headers: defaultHeaders ?? {},
           ),
         ) {
-    // Add authentication interceptor
-    _dio.interceptors.add(
-      AuthInterceptor(
-        apiKey: apiKey,
-        authType: authType,
-        customHeaderName: customHeaderName,
-      ),
-    );
-
     // Add logging interceptor if enabled
     if (enableLogging) {
       _dio.interceptors.add(LoggingInterceptor());
@@ -119,11 +134,11 @@ class ApiClient implements ApiClientBase {
   Dio get dio => _dio;
 
   /// Sends a GET request to the specified endpoint.
-  /// 
+  ///
   /// [endpoint] - The API endpoint path (relative to baseUrl).
   /// [queryParameters] - Optional query parameters.
   /// [options] - Optional request options.
-  /// 
+  ///
   /// Returns the response data.
   /// Throws [LablebException] if the request fails.
   @override
@@ -132,10 +147,12 @@ class ApiClient implements ApiClientBase {
     Map<String, dynamic>? queryParameters,
     Options? options,
   }) async {
+    final resolvedEndpoint = _resolveEndpoint(endpoint);
     try {
       return await _dio.get<T>(
-        endpoint,
-        queryParameters: queryParameters,
+        resolvedEndpoint,
+        queryParameters:
+            _resolveQueryParameters(queryParameters, resolvedEndpoint),
         options: options,
       );
     } on DioException catch (e) {
@@ -143,13 +160,72 @@ class ApiClient implements ApiClientBase {
     }
   }
 
+  String _resolveEndpoint(String endpoint) {
+    if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
+      return endpoint;
+    }
+
+    final normalized = endpoint.trim();
+    if (_pathPrefix.isEmpty) {
+      return normalized;
+    }
+
+    var trimmed = normalized;
+    if (trimmed.startsWith('/')) {
+      trimmed = trimmed.substring(1);
+    }
+
+    if (trimmed.startsWith('v2/projects/')) {
+      return '/$trimmed';
+    }
+
+    if (trimmed.isEmpty) {
+      return _pathPrefix;
+    }
+
+    return '$_pathPrefix/$trimmed';
+  }
+
+  Map<String, dynamic>? _resolveQueryParameters(
+    Map<String, dynamic>? queryParameters,
+    String resolvedEndpoint,
+  ) {
+    final params = <String, dynamic>{};
+
+    if (queryParameters != null) {
+      params.addAll(queryParameters);
+    }
+
+    params['apikey'] = _selectApiKeyForEndpoint(resolvedEndpoint);
+    return params;
+  }
+
+  String _selectApiKeyForEndpoint(String endpoint) {
+    final path = _extractPath(endpoint);
+    return _isIndexEndpoint(path) ? apiKeyIndex : apiKeySearch;
+  }
+
+  String _extractPath(String endpoint) {
+    if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
+      return Uri.parse(endpoint).path;
+    }
+
+    return endpoint.startsWith('/') ? endpoint : '/$endpoint';
+  }
+
+  bool _isIndexEndpoint(String path) {
+    final trimmedPath = path.startsWith('/') ? path.substring(1) : path;
+    final segments = trimmedPath.split('/');
+    return segments.contains('documents');
+  }
+
   /// Sends a POST request to the specified endpoint.
-  /// 
+  ///
   /// [endpoint] - The API endpoint path (relative to baseUrl).
   /// [data] - The request body data.
   /// [queryParameters] - Optional query parameters.
   /// [options] - Optional request options.
-  /// 
+  ///
   /// Returns the response data.
   /// Throws [LablebException] if the request fails.
   @override
@@ -159,11 +235,13 @@ class ApiClient implements ApiClientBase {
     Map<String, dynamic>? queryParameters,
     Options? options,
   }) async {
+    final resolvedEndpoint = _resolveEndpoint(endpoint);
     try {
       return await _dio.post<T>(
-        endpoint,
+        resolvedEndpoint,
         data: data,
-        queryParameters: queryParameters,
+        queryParameters:
+            _resolveQueryParameters(queryParameters, resolvedEndpoint),
         options: options,
       );
     } on DioException catch (e) {
@@ -172,12 +250,12 @@ class ApiClient implements ApiClientBase {
   }
 
   /// Sends a PUT request to the specified endpoint.
-  /// 
+  ///
   /// [endpoint] - The API endpoint path (relative to baseUrl).
   /// [data] - The request body data.
   /// [queryParameters] - Optional query parameters.
   /// [options] - Optional request options.
-  /// 
+  ///
   /// Returns the response data.
   /// Throws [LablebException] if the request fails.
   @override
@@ -187,11 +265,13 @@ class ApiClient implements ApiClientBase {
     Map<String, dynamic>? queryParameters,
     Options? options,
   }) async {
+    final resolvedEndpoint = _resolveEndpoint(endpoint);
     try {
       return await _dio.put<T>(
-        endpoint,
+        resolvedEndpoint,
         data: data,
-        queryParameters: queryParameters,
+        queryParameters:
+            _resolveQueryParameters(queryParameters, resolvedEndpoint),
         options: options,
       );
     } on DioException catch (e) {
@@ -200,12 +280,12 @@ class ApiClient implements ApiClientBase {
   }
 
   /// Sends a PATCH request to the specified endpoint.
-  /// 
+  ///
   /// [endpoint] - The API endpoint path (relative to baseUrl).
   /// [data] - The request body data.
   /// [queryParameters] - Optional query parameters.
   /// [options] - Optional request options.
-  /// 
+  ///
   /// Returns the response data.
   /// Throws [LablebException] if the request fails.
   @override
@@ -215,11 +295,13 @@ class ApiClient implements ApiClientBase {
     Map<String, dynamic>? queryParameters,
     Options? options,
   }) async {
+    final resolvedEndpoint = _resolveEndpoint(endpoint);
     try {
       return await _dio.patch<T>(
-        endpoint,
+        resolvedEndpoint,
         data: data,
-        queryParameters: queryParameters,
+        queryParameters:
+            _resolveQueryParameters(queryParameters, resolvedEndpoint),
         options: options,
       );
     } on DioException catch (e) {
@@ -228,12 +310,12 @@ class ApiClient implements ApiClientBase {
   }
 
   /// Sends a DELETE request to the specified endpoint.
-  /// 
+  ///
   /// [endpoint] - The API endpoint path (relative to baseUrl).
   /// [data] - Optional request body data.
   /// [queryParameters] - Optional query parameters.
   /// [options] - Optional request options.
-  /// 
+  ///
   /// Returns the response data.
   /// Throws [LablebException] if the request fails.
   @override
@@ -243,11 +325,13 @@ class ApiClient implements ApiClientBase {
     Map<String, dynamic>? queryParameters,
     Options? options,
   }) async {
+    final resolvedEndpoint = _resolveEndpoint(endpoint);
     try {
       return await _dio.delete<T>(
-        endpoint,
+        resolvedEndpoint,
         data: data,
-        queryParameters: queryParameters,
+        queryParameters:
+            _resolveQueryParameters(queryParameters, resolvedEndpoint),
         options: options,
       );
     } on DioException catch (e) {
@@ -259,16 +343,16 @@ class ApiClient implements ApiClientBase {
   LablebException _handleDioException(DioException error) {
     final statusCode = error.response?.statusCode;
     final responseData = error.response?.data;
-    
+
     Map<String, dynamic>? details;
     String message = error.message ?? 'An unknown error occurred';
 
     // Try to extract error message from response
     if (responseData is Map<String, dynamic>) {
-      message = responseData['message'] ?? 
-                responseData['error'] ?? 
-                responseData['error_message'] ?? 
-                message;
+      message = responseData['message'] ??
+          responseData['error'] ??
+          responseData['error_message'] ??
+          message;
       details = responseData;
     } else if (responseData is String) {
       message = responseData;
@@ -352,4 +436,3 @@ class ErrorInterceptor extends Interceptor {
     super.onError(err, handler);
   }
 }
-
