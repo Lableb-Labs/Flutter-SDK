@@ -18,6 +18,7 @@ abstract interface class ApiClientBase {
     String endpoint, {
     Map<String, dynamic>? queryParameters,
     Options? options,
+    CancelToken? cancelToken,
   });
 
   Future<Response<T>> post<T>(
@@ -25,6 +26,7 @@ abstract interface class ApiClientBase {
     dynamic data,
     Map<String, dynamic>? queryParameters,
     Options? options,
+    CancelToken? cancelToken,
   });
 
   Future<Response<T>> put<T>(
@@ -32,6 +34,7 @@ abstract interface class ApiClientBase {
     dynamic data,
     Map<String, dynamic>? queryParameters,
     Options? options,
+    CancelToken? cancelToken,
   });
 
   Future<Response<T>> patch<T>(
@@ -39,6 +42,7 @@ abstract interface class ApiClientBase {
     dynamic data,
     Map<String, dynamic>? queryParameters,
     Options? options,
+    CancelToken? cancelToken,
   });
 
   Future<Response<T>> delete<T>(
@@ -46,6 +50,7 @@ abstract interface class ApiClientBase {
     dynamic data,
     Map<String, dynamic>? queryParameters,
     Options? options,
+    CancelToken? cancelToken,
   });
 }
 
@@ -146,6 +151,7 @@ class ApiClient implements ApiClientBase {
     String endpoint, {
     Map<String, dynamic>? queryParameters,
     Options? options,
+    CancelToken? cancelToken,
   }) async {
     final resolvedEndpoint = _resolveEndpoint(endpoint);
     try {
@@ -154,6 +160,7 @@ class ApiClient implements ApiClientBase {
         queryParameters:
             _resolveQueryParameters(queryParameters, resolvedEndpoint),
         options: options,
+        cancelToken: cancelToken,
       );
     } on DioException catch (e) {
       throw _handleDioException(e);
@@ -234,6 +241,7 @@ class ApiClient implements ApiClientBase {
     dynamic data,
     Map<String, dynamic>? queryParameters,
     Options? options,
+    CancelToken? cancelToken,
   }) async {
     final resolvedEndpoint = _resolveEndpoint(endpoint);
     try {
@@ -243,6 +251,7 @@ class ApiClient implements ApiClientBase {
         queryParameters:
             _resolveQueryParameters(queryParameters, resolvedEndpoint),
         options: options,
+        cancelToken: cancelToken,
       );
     } on DioException catch (e) {
       throw _handleDioException(e);
@@ -264,6 +273,7 @@ class ApiClient implements ApiClientBase {
     dynamic data,
     Map<String, dynamic>? queryParameters,
     Options? options,
+    CancelToken? cancelToken,
   }) async {
     final resolvedEndpoint = _resolveEndpoint(endpoint);
     try {
@@ -273,6 +283,7 @@ class ApiClient implements ApiClientBase {
         queryParameters:
             _resolveQueryParameters(queryParameters, resolvedEndpoint),
         options: options,
+        cancelToken: cancelToken,
       );
     } on DioException catch (e) {
       throw _handleDioException(e);
@@ -294,6 +305,7 @@ class ApiClient implements ApiClientBase {
     dynamic data,
     Map<String, dynamic>? queryParameters,
     Options? options,
+    CancelToken? cancelToken,
   }) async {
     final resolvedEndpoint = _resolveEndpoint(endpoint);
     try {
@@ -303,6 +315,7 @@ class ApiClient implements ApiClientBase {
         queryParameters:
             _resolveQueryParameters(queryParameters, resolvedEndpoint),
         options: options,
+        cancelToken: cancelToken,
       );
     } on DioException catch (e) {
       throw _handleDioException(e);
@@ -324,6 +337,7 @@ class ApiClient implements ApiClientBase {
     dynamic data,
     Map<String, dynamic>? queryParameters,
     Options? options,
+    CancelToken? cancelToken,
   }) async {
     final resolvedEndpoint = _resolveEndpoint(endpoint);
     try {
@@ -333,6 +347,7 @@ class ApiClient implements ApiClientBase {
         queryParameters:
             _resolveQueryParameters(queryParameters, resolvedEndpoint),
         options: options,
+        cancelToken: cancelToken,
       );
     } on DioException catch (e) {
       throw _handleDioException(e);

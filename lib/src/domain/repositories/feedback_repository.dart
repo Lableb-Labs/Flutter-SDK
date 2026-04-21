@@ -38,7 +38,8 @@ abstract class FeedbackRepository {
   ///
   /// [event] - The search feedback event data.
   ///
-  /// Throws [LablebException] if submission fails.
+  /// This is a fire-and-forget method. Network exceptions are swallowed
+  /// to prevent blocking the UI.
   Future<void> submitSearchFeedbackEvent(SearchFeedbackEvent event,
       {String? handler});
 
@@ -48,7 +49,8 @@ abstract class FeedbackRepository {
   ///
   /// [event] - The autocomplete feedback event data.
   ///
-  /// Throws [LablebException] if submission fails.
+  /// This is a fire-and-forget method. Network exceptions are swallowed
+  /// to prevent blocking the UI.
   Future<void> submitAutocompleteFeedbackEvent(AutocompleteFeedbackEvent event,
       {String? handler});
 
@@ -58,7 +60,8 @@ abstract class FeedbackRepository {
   ///
   /// [event] - The recommendation feedback event data.
   ///
-  /// Throws [LablebException] if submission fails.
+  /// This is a fire-and-forget method. Network exceptions are swallowed
+  /// to prevent blocking the UI.
   Future<void> submitRecommendFeedbackEvent(RecommendFeedbackEvent event,
       {String? handler});
 }

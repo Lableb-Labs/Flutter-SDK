@@ -25,30 +25,39 @@ class FeedbackRepositoryImpl implements FeedbackRepository {
   @override
   Future<void> submitSearchFeedbackEvent(SearchFeedbackEvent event,
       {String? handler}) async {
-    await _apiClient.post(
+    // Fire and forget: don't await, and swallow any network exceptions
+    _apiClient.post(
       _constructPath('search', handler),
       data: [event.toJson()],
       queryParameters: {'apikey': _apiClient.apiKeySearch},
-    );
+    ).then((_) {}, onError: (e) {
+      // Swallowed to prevent blocking the client app's flow
+    });
   }
 
   @override
   Future<void> submitAutocompleteFeedbackEvent(AutocompleteFeedbackEvent event,
       {String? handler}) async {
-    await _apiClient.post(
+    // Fire and forget: don't await, and swallow any network exceptions
+    _apiClient.post(
       _constructPath('autocomplete', handler),
       data: [event.toJson()],
       queryParameters: {'apikey': _apiClient.apiKeySearch},
-    );
+    ).then((_) {}, onError: (e) {
+      // Swallowed to prevent blocking the client app's flow
+    });
   }
 
   @override
   Future<void> submitRecommendFeedbackEvent(RecommendFeedbackEvent event,
       {String? handler}) async {
-    await _apiClient.post(
+    // Fire and forget: don't await, and swallow any network exceptions
+    _apiClient.post(
       _constructPath('recommend', handler),
       data: [event.toJson()],
       queryParameters: {'apikey': _apiClient.apiKeySearch},
-    );
+    ).then((_) {}, onError: (e) {
+      // Swallowed to prevent blocking the client app's flow
+    });
   }
 }

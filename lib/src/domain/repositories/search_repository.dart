@@ -1,5 +1,6 @@
 import '../../exceptions/exceptions.dart';
 import '../../data/responses/matching_response.dart';
+import 'package:dio/dio.dart';
 
 /// Abstract repository interface for search operations.
 ///
@@ -32,5 +33,6 @@ abstract class SearchRepository {
     String? userIp,
     String? userCountry,
     String? requestSource,
+    CancelToken? cancelToken,
   });
 }

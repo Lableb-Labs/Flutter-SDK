@@ -1,4 +1,6 @@
+import 'dart:isolate';
 import '../../api/api_client.dart';
+import 'package:dio/dio.dart';
 import '../../domain/repositories/search_repository.dart';
 import '../requests/search_request.dart';
 import '../../data/responses/matching_response.dart';
@@ -25,6 +27,7 @@ class SearchRepositoryImpl implements SearchRepository {
     String? userIp,
     String? userCountry,
     String? requestSource,
+    CancelToken? cancelToken,
   }) async {
     try {
       final request = SearchRequest(
@@ -48,10 +51,12 @@ class SearchRepositoryImpl implements SearchRepository {
       final response = await _apiClient.get(
         path,
         queryParameters: queryParams,
+        cancelToken: cancelToken,
       );
 
-      final searchResponse = MatchingResponse.fromJson(
-        response.data as Map<String, dynamic>,
+      final responseData = response.data as Map<String, dynamic>;
+      final searchResponse = await Isolate.run(
+        () => MatchingResponse.fromJson(responseData),
       );
 
       return searchResponse;

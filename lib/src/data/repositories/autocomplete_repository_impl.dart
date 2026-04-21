@@ -1,4 +1,6 @@
+import 'dart:isolate';
 import '../../api/api_client.dart';
+import 'package:dio/dio.dart';
 import '../../domain/repositories/autocomplete_repository.dart';
 import '../requests/autocomplete_request.dart';
 import '../responses/matching_response.dart';
@@ -23,6 +25,7 @@ class AutocompleteRepositoryImpl implements AutocompleteRepository {
     String? userIp,
     String? userCountry,
     String? requestSource,
+    CancelToken? cancelToken,
   }) async {
     try {
       final request = AutocompleteRequest(
@@ -45,10 +48,12 @@ class AutocompleteRepositoryImpl implements AutocompleteRepository {
       final response = await _apiClient.get(
         path,
         queryParameters: queryParams,
+        cancelToken: cancelToken,
       );
 
-      final autocompleteResponse = MatchingResponse.fromJson(
-        response.data as Map<String, dynamic>,
+      final responseData = response.data as Map<String, dynamic>;
+      final autocompleteResponse = await Isolate.run(
+        () => MatchingResponse.fromJson(responseData),
       );
 
       return autocompleteResponse;

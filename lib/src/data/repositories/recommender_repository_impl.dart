@@ -1,4 +1,6 @@
+import 'dart:isolate';
 import '../../api/api_client.dart';
+import 'package:dio/dio.dart';
 import '../../domain/repositories/recommender_repository.dart';
 import '../responses/matching_response.dart';
 
@@ -23,6 +25,7 @@ class RecommenderRepositoryImpl implements RecommenderRepository {
     String? userIp,
     String? userCountry,
     String? requestSource,
+    CancelToken? cancelToken,
   }) async {
     try {
       final queryParams = <String, dynamic>{
@@ -54,10 +57,12 @@ class RecommenderRepositoryImpl implements RecommenderRepository {
       final response = await _apiClient.get(
         path,
         queryParameters: queryParams,
+        cancelToken: cancelToken,
       );
 
-      final recommenderResponse = MatchingResponse.fromJson(
-        response.data as Map<String, dynamic>,
+      final responseData = response.data as Map<String, dynamic>;
+      final recommenderResponse = await Isolate.run(
+        () => MatchingResponse.fromJson(responseData),
       );
 
       return recommenderResponse;

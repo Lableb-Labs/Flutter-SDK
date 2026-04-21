@@ -1,5 +1,6 @@
 import '../../exceptions/exceptions.dart';
 import '../../data/responses/matching_response.dart';
+import 'package:dio/dio.dart';
 
 /// Abstract repository interface for recommendation operations.
 ///
@@ -30,5 +31,6 @@ abstract class RecommenderRepository {
     String? userIp,
     String? userCountry,
     String? requestSource,
+    CancelToken? cancelToken,
   });
 }
