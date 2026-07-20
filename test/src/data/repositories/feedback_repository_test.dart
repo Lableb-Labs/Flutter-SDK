@@ -36,6 +36,8 @@ void main() {
         eventType: FeedbackEventType.click,
         itemId: 'item-1',
         sessionId: 'sess-123',
+        itemQuantity: '2',
+        cartId: 'cart-123',
       );
 
       await repository.submitSearchFeedbackEvent(event);
@@ -63,6 +65,8 @@ void main() {
         eventType: FeedbackEventType.click,
         itemId: 'item-1',
         sessionId: 'sess-123',
+        itemQuantity: '3',
+        cartId: 'cart-456',
       );
 
       await repository.submitAutocompleteFeedbackEvent(event, handler: 'custom');

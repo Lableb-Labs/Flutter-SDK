@@ -61,6 +61,12 @@ class SearchFeedbackEvent extends BaseFeedbackEvent {
   /// Price of the item that received the interaction.
   final String? itemPrice;
 
+  /// Quantity of the item that received the interaction.
+  final String? itemQuantity;
+
+  /// ID of the cart if the item is added or purchased.
+  final String? cartId;
+
   SearchFeedbackEvent({
     FeedbackEventType eventType = FeedbackEventType.click,
     this.query,
@@ -73,6 +79,8 @@ class SearchFeedbackEvent extends BaseFeedbackEvent {
     this.country,
     this.requestSource,
     this.itemPrice,
+    this.itemQuantity,
+    this.cartId,
   }) : super(eventType: eventType);
 
   @override
@@ -88,6 +96,8 @@ class SearchFeedbackEvent extends BaseFeedbackEvent {
       'country': country,
       'request_source': requestSource,
       'item_price': itemPrice,
+      'item_quantity': itemQuantity,
+      'cart_id': cartId,
     });
   }
 }
@@ -126,6 +136,12 @@ class AutocompleteFeedbackEvent extends BaseFeedbackEvent {
   /// Price of the item that received the interaction.
   final String? itemPrice;
 
+  /// Quantity of the item that received the interaction.
+  final String? itemQuantity;
+
+  /// ID of the cart if the item is added or purchased.
+  final String? cartId;
+
   AutocompleteFeedbackEvent({
     FeedbackEventType eventType = FeedbackEventType.click,
     this.query,
@@ -138,6 +154,8 @@ class AutocompleteFeedbackEvent extends BaseFeedbackEvent {
     this.country,
     this.requestSource,
     this.itemPrice,
+    this.itemQuantity,
+    this.cartId,
   }) : super(eventType: eventType);
 
   @override
@@ -153,6 +171,8 @@ class AutocompleteFeedbackEvent extends BaseFeedbackEvent {
       'country': country,
       'request_source': requestSource,
       'item_price': itemPrice,
+      'item_quantity': itemQuantity,
+      'cart_id': cartId,
     });
   }
 }

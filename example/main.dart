@@ -171,6 +171,8 @@ void main() async {
       userId: 'user-123',
       country: 'DE',
       userIp: '192.111.24.21',
+      itemQuantity: '1',
+      cartId: 'CART_98765',
     ));
     print('Search feedback event submitted successfully');
 
