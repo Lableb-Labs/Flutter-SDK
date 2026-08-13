@@ -2,7 +2,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:lableb_flutter_sdk/src/data/repositories/feedback_repository_impl.dart';
-import 'package:lableb_flutter_sdk/src/data/models/feedback_event_model.dart';
 import 'package:lableb_flutter_sdk/src/domain/repositories/feedback_repository.dart';
 
 import '../../../helpers/test_helpers.mocks.dart';
@@ -13,149 +12,221 @@ void main() {
 
   setUp(() {
     mockApiClient = MockApiClientBase();
-    when(mockApiClient.apiKeySearch).thenReturn('search-key');
+    when(mockApiClient.apiKey).thenReturn('test-api-key');
     repository = FeedbackRepositoryImpl(mockApiClient);
   });
 
-  group('FeedbackRepositoryImpl', () {
-    final requestOptions = RequestOptions(path: '/search/feedback/events');
+  Response<dynamic> eventResponse({int code = 200}) => Response<dynamic>(
+        data: {'time': 6, 'code': code, 'response': null},
+        statusCode: 200,
+        requestOptions: RequestOptions(path: '/feedback'),
+      );
 
-    test('submitSearchFeedbackEvent sends correct payload', () async {
+  group('FeedbackRepositoryImpl.submitSearchFeedbackEvent', () {
+    test('POSTs to the documented path with query params, defaulting token to the API key', () async {
+      when(mockApiClient.post(
+        any,
+        queryParameters: anyNamed('queryParameters'),
+      )).thenAnswer((_) async => eventResponse());
+
+      await repository.submitSearchFeedbackEvent(
+        project: 'wptest',
+        collection: 'posts',
+        query: 'product',
+        eventType: SearchFeedbackEventType.click,
+        itemId: 'item-1',
+        itemOrder: 1,
+        itemPrice: 95.5,
+        sessionId: '1c4Hb23',
+      );
+
+      final captured = verify(mockApiClient.post(
+        captureAny,
+        queryParameters: captureAnyNamed('queryParameters'),
+      )).captured;
+      expect(captured[0], '/api/v1/wptest/collections/posts/search/default/feedback/events');
+      expect(captured[1], {
+        'query': 'product',
+        'event_type': 'click',
+        'item_id': 'item-1',
+        'item_order': 1,
+        'item_price': 95.5,
+        'session_id': '1c4Hb23',
+        'token': 'test-api-key',
+      });
+    });
+
+    test('uses a custom handler when provided', () async {
+      when(mockApiClient.post(
+        any,
+        queryParameters: anyNamed('queryParameters'),
+      )).thenAnswer((_) async => eventResponse());
+
+      await repository.submitSearchFeedbackEvent(
+        project: 'wptest',
+        collection: 'posts',
+        handler: 'custom',
+        query: 'product',
+        eventType: SearchFeedbackEventType.purchase,
+        itemId: 'item-1',
+        itemOrder: 2,
+      );
+
+      final captured = verify(mockApiClient.post(
+        captureAny,
+        queryParameters: captureAnyNamed('queryParameters'),
+      )).captured;
+      expect(captured[0], '/api/v1/wptest/collections/posts/search/custom/feedback/events');
+      expect(captured[1]['event_type'], 'purchase');
+    });
+
+    test('throws when the API returns a non-2xx code', () async {
+      when(mockApiClient.post(
+        any,
+        queryParameters: anyNamed('queryParameters'),
+      )).thenAnswer((_) async => eventResponse(code: 500));
+
+      await expectLater(
+        repository.submitSearchFeedbackEvent(
+          project: 'wptest',
+          collection: 'posts',
+          query: 'product',
+          eventType: SearchFeedbackEventType.click,
+          itemId: 'item-1',
+          itemOrder: 1,
+        ),
+        throwsA(isA<Exception>()),
+      );
+    });
+  });
+
+  group('FeedbackRepositoryImpl.submitSearchFeedback (legacy)', () {
+    test('delegates to submitSearchFeedbackEvent when project/collection are in metadata', () async {
+      when(mockApiClient.post(
+        any,
+        queryParameters: anyNamed('queryParameters'),
+      )).thenAnswer((_) async => eventResponse());
+
+      await repository.submitSearchFeedback(
+        query: 'product',
+        resultId: 'item-1',
+        feedbackValue: 'clicked',
+        metadata: {'project': 'wptest', 'collection': 'posts'},
+      );
+
+      final captured = verify(mockApiClient.post(
+        captureAny,
+        queryParameters: captureAnyNamed('queryParameters'),
+      )).captured;
+      expect(captured[0], '/api/v1/wptest/collections/posts/search/default/feedback/events');
+      expect(captured[1]['item_id'], 'item-1');
+      expect(captured[1]['event_type'], 'click');
+    });
+
+    test('falls back to POST /feedback/search when metadata has no project/collection', () async {
       when(mockApiClient.post(
         any,
         data: anyNamed('data'),
-        queryParameters: anyNamed('queryParameters'),
       )).thenAnswer((_) async => Response<dynamic>(
-            data: {},
+            data: {'success': true, 'message': 'ok'},
             statusCode: 200,
-            requestOptions: requestOptions,
+            requestOptions: RequestOptions(path: '/feedback/search'),
           ));
 
-      final event = SearchFeedbackEvent(
-        query: 'test',
-        eventType: FeedbackEventType.click,
-        itemId: 'item-1',
-        sessionId: 'sess-123',
-        itemQuantity: '2',
-        cartId: 'cart-123',
+      await repository.submitSearchFeedback(
+        query: 'product',
+        resultId: 'item-1',
+        feedbackValue: 'clicked',
       );
 
-      await repository.submitSearchFeedbackEvent(event);
+      verify(mockApiClient.post(
+        '/feedback/search',
+        data: {
+          'feedback_type': 'search',
+          'query': 'product',
+          'result_id': 'item-1',
+          'feedback_value': 'clicked',
+        },
+      )).called(1);
+    });
+  });
+
+  group('FeedbackRepositoryImpl.submitAutocompleteFeedback', () {
+    test('POSTs to /feedback/autocomplete', () async {
+      when(mockApiClient.post(
+        any,
+        data: anyNamed('data'),
+      )).thenAnswer((_) async => Response<dynamic>(
+            data: {'success': true, 'message': 'ok'},
+            statusCode: 200,
+            requestOptions: RequestOptions(path: '/feedback/autocomplete'),
+          ));
+
+      await repository.submitAutocompleteFeedback(
+        query: 'prod',
+        suggestion: 'product',
+        feedbackValue: 'clicked',
+      );
 
       verify(mockApiClient.post(
-        '/search/feedback/events',
-        data: [event.toJson()],
-        queryParameters: {'apikey': 'search-key'},
+        '/feedback/autocomplete',
+        data: {
+          'feedback_type': 'autocomplete',
+          'query': 'prod',
+          'result_id': 'product',
+          'feedback_value': 'clicked',
+        },
       )).called(1);
     });
 
-    test('submitAutocompleteFeedbackEvent sends correct payload', () async {
+    test('throws when the response reports failure', () async {
       when(mockApiClient.post(
         any,
         data: anyNamed('data'),
-        queryParameters: anyNamed('queryParameters'),
       )).thenAnswer((_) async => Response<dynamic>(
-            data: {},
+            data: {'success': false, 'message': 'rejected'},
             statusCode: 200,
-            requestOptions: requestOptions,
+            requestOptions: RequestOptions(path: '/feedback/autocomplete'),
           ));
 
-      final event = AutocompleteFeedbackEvent(
-        query: 'test',
-        eventType: FeedbackEventType.click,
-        itemId: 'item-1',
-        sessionId: 'sess-123',
-        itemQuantity: '3',
-        cartId: 'cart-456',
+      await expectLater(
+        repository.submitAutocompleteFeedback(
+          query: 'prod',
+          suggestion: 'product',
+          feedbackValue: 'clicked',
+        ),
+        throwsA(isA<Exception>()),
       );
-
-      await repository.submitAutocompleteFeedbackEvent(event, handler: 'custom');
-
-      verify(mockApiClient.post(
-        '/autocomplete/custom/feedback/events',
-        data: [event.toJson()],
-        queryParameters: {'apikey': 'search-key'},
-      )).called(1);
     });
+  });
 
-    test('submitRecommendFeedbackEvent sends correct payload', () async {
+  group('FeedbackRepositoryImpl.submitRecommenderFeedback', () {
+    test('POSTs to /feedback/recommender', () async {
       when(mockApiClient.post(
         any,
         data: anyNamed('data'),
-        queryParameters: anyNamed('queryParameters'),
       )).thenAnswer((_) async => Response<dynamic>(
-            data: {},
+            data: {'success': true, 'message': 'ok'},
             statusCode: 200,
-            requestOptions: requestOptions,
+            requestOptions: RequestOptions(path: '/feedback/recommender'),
           ));
 
-      final event = RecommendFeedbackEvent(
-        eventType: FeedbackEventType.click,
-        sourceId: 'item-1',
-        targetId: 'item-2',
-        sessionId: 'sess-123',
+      await repository.submitRecommenderFeedback(
+        recommendationId: 'item-2',
+        feedbackValue: 'positive',
+        userId: 'user-123',
       );
-
-      await repository.submitRecommendFeedbackEvent(event);
 
       verify(mockApiClient.post(
-        '/recommend/feedback/events',
-        data: [event.toJson()],
-        queryParameters: {'apikey': 'search-key'},
+        '/feedback/recommender',
+        data: {
+          'feedback_type': 'recommender',
+          'query': '',
+          'result_id': 'item-2',
+          'feedback_value': 'positive',
+          'user_id': 'user-123',
+        },
       )).called(1);
-    });
-
-    test('submitSearchFeedbackEvent swallows network exceptions', () async {
-      when(mockApiClient.post(
-        any,
-        data: anyNamed('data'),
-        queryParameters: anyNamed('queryParameters'),
-      )).thenAnswer((_) => Future.error(Exception('API Error')));
-
-      final event = SearchFeedbackEvent(
-        query: 'test',
-        eventType: FeedbackEventType.click,
-        itemId: 'item-1',
-      );
-
-      // Should not throw an exception
-      await repository.submitSearchFeedbackEvent(event);
-      
-      verify(mockApiClient.post(any, data: anyNamed('data'), queryParameters: anyNamed('queryParameters'))).called(1);
-    });
-
-    test('submitAutocompleteFeedbackEvent swallows network exceptions', () async {
-      when(mockApiClient.post(
-        any,
-        data: anyNamed('data'),
-        queryParameters: anyNamed('queryParameters'),
-      )).thenAnswer((_) => Future.error(Exception('API Error')));
-
-      final event = AutocompleteFeedbackEvent(
-        query: 'test',
-        eventType: FeedbackEventType.click,
-        itemId: 'item-1',
-      );
-
-      // Should not throw an exception
-      await repository.submitAutocompleteFeedbackEvent(event);
-    });
-
-    test('submitRecommendFeedbackEvent swallows network exceptions', () async {
-      when(mockApiClient.post(
-        any,
-        data: anyNamed('data'),
-        queryParameters: anyNamed('queryParameters'),
-      )).thenAnswer((_) => Future.error(Exception('API Error')));
-
-      final event = RecommendFeedbackEvent(
-        eventType: FeedbackEventType.click,
-        sourceId: 'item-1',
-        targetId: 'item-2',
-      );
-
-      // Should not throw an exception
-      await repository.submitRecommendFeedbackEvent(event);
     });
   });
 }

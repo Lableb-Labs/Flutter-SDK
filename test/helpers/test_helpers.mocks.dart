@@ -82,20 +82,11 @@ class MockApiClientBase extends _i1.Mock implements _i3.ApiClientBase {
       ) as String);
 
   @override
-  String get apiKeySearch => (super.noSuchMethod(
-        Invocation.getter(#apiKeySearch),
+  String get apiKey => (super.noSuchMethod(
+        Invocation.getter(#apiKey),
         returnValue: _i4.dummyValue<String>(
           this,
-          Invocation.getter(#apiKeySearch),
-        ),
-      ) as String);
-
-  @override
-  String get apiKeyIndex => (super.noSuchMethod(
-        Invocation.getter(#apiKeyIndex),
-        returnValue: _i4.dummyValue<String>(
-          this,
-          Invocation.getter(#apiKeyIndex),
+          Invocation.getter(#apiKey),
         ),
       ) as String);
 
@@ -131,7 +122,6 @@ class MockApiClientBase extends _i1.Mock implements _i3.ApiClientBase {
     String? endpoint, {
     Map<String, dynamic>? queryParameters,
     _i2.Options? options,
-    _i2.CancelToken? cancelToken,
   }) =>
       (super.noSuchMethod(
         Invocation.method(
@@ -140,7 +130,6 @@ class MockApiClientBase extends _i1.Mock implements _i3.ApiClientBase {
           {
             #queryParameters: queryParameters,
             #options: options,
-            #cancelToken: cancelToken,
           },
         ),
         returnValue: _i5.Future<_i2.Response<T>>.value(_FakeResponse_2<T>(
@@ -151,7 +140,6 @@ class MockApiClientBase extends _i1.Mock implements _i3.ApiClientBase {
             {
               #queryParameters: queryParameters,
               #options: options,
-              #cancelToken: cancelToken,
             },
           ),
         )),
@@ -163,7 +151,6 @@ class MockApiClientBase extends _i1.Mock implements _i3.ApiClientBase {
     dynamic data,
     Map<String, dynamic>? queryParameters,
     _i2.Options? options,
-    _i2.CancelToken? cancelToken,
   }) =>
       (super.noSuchMethod(
         Invocation.method(
@@ -173,7 +160,6 @@ class MockApiClientBase extends _i1.Mock implements _i3.ApiClientBase {
             #data: data,
             #queryParameters: queryParameters,
             #options: options,
-            #cancelToken: cancelToken,
           },
         ),
         returnValue: _i5.Future<_i2.Response<T>>.value(_FakeResponse_2<T>(
@@ -185,7 +171,6 @@ class MockApiClientBase extends _i1.Mock implements _i3.ApiClientBase {
               #data: data,
               #queryParameters: queryParameters,
               #options: options,
-              #cancelToken: cancelToken,
             },
           ),
         )),
@@ -197,7 +182,6 @@ class MockApiClientBase extends _i1.Mock implements _i3.ApiClientBase {
     dynamic data,
     Map<String, dynamic>? queryParameters,
     _i2.Options? options,
-    _i2.CancelToken? cancelToken,
   }) =>
       (super.noSuchMethod(
         Invocation.method(
@@ -207,7 +191,6 @@ class MockApiClientBase extends _i1.Mock implements _i3.ApiClientBase {
             #data: data,
             #queryParameters: queryParameters,
             #options: options,
-            #cancelToken: cancelToken,
           },
         ),
         returnValue: _i5.Future<_i2.Response<T>>.value(_FakeResponse_2<T>(
@@ -219,7 +202,6 @@ class MockApiClientBase extends _i1.Mock implements _i3.ApiClientBase {
               #data: data,
               #queryParameters: queryParameters,
               #options: options,
-              #cancelToken: cancelToken,
             },
           ),
         )),
@@ -231,7 +213,6 @@ class MockApiClientBase extends _i1.Mock implements _i3.ApiClientBase {
     dynamic data,
     Map<String, dynamic>? queryParameters,
     _i2.Options? options,
-    _i2.CancelToken? cancelToken,
   }) =>
       (super.noSuchMethod(
         Invocation.method(
@@ -241,7 +222,6 @@ class MockApiClientBase extends _i1.Mock implements _i3.ApiClientBase {
             #data: data,
             #queryParameters: queryParameters,
             #options: options,
-            #cancelToken: cancelToken,
           },
         ),
         returnValue: _i5.Future<_i2.Response<T>>.value(_FakeResponse_2<T>(
@@ -253,7 +233,6 @@ class MockApiClientBase extends _i1.Mock implements _i3.ApiClientBase {
               #data: data,
               #queryParameters: queryParameters,
               #options: options,
-              #cancelToken: cancelToken,
             },
           ),
         )),
@@ -265,7 +244,6 @@ class MockApiClientBase extends _i1.Mock implements _i3.ApiClientBase {
     dynamic data,
     Map<String, dynamic>? queryParameters,
     _i2.Options? options,
-    _i2.CancelToken? cancelToken,
   }) =>
       (super.noSuchMethod(
         Invocation.method(
@@ -275,7 +253,6 @@ class MockApiClientBase extends _i1.Mock implements _i3.ApiClientBase {
             #data: data,
             #queryParameters: queryParameters,
             #options: options,
-            #cancelToken: cancelToken,
           },
         ),
         returnValue: _i5.Future<_i2.Response<T>>.value(_FakeResponse_2<T>(
@@ -287,7 +264,6 @@ class MockApiClientBase extends _i1.Mock implements _i3.ApiClientBase {
               #data: data,
               #queryParameters: queryParameters,
               #options: options,
-              #cancelToken: cancelToken,
             },
           ),
         )),
