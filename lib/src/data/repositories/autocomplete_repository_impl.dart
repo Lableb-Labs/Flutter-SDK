@@ -1,13 +1,17 @@
-import 'dart:isolate';
 import '../../api/api_client.dart';
-import 'package:dio/dio.dart';
+import '../../di/locator.dart';
+import '../../domain/entities/autocomplete_entity.dart';
+import '../../domain/entities/global_settings_entity.dart';
 import '../../domain/repositories/autocomplete_repository.dart';
+import '../../exceptions/exceptions.dart';
 import '../requests/autocomplete_request.dart';
-import '../responses/matching_response.dart';
+import '../responses/autocomplete_response.dart';
 
 /// Implementation of [AutocompleteRepository] for autocomplete operations.
 ///
-/// This repository handles all communication with the autocomplete API endpoints.
+/// Per Lableb's REST API docs, autocomplete is scoped to
+/// `/v2/projects/{platformName}/indices/{indexName}/autocomplete/{handler}`
+/// and authenticates via an `apikey` query parameter.
 class AutocompleteRepositoryImpl implements AutocompleteRepository {
   /// The API client for making HTTP requests.
   final ApiClientBase _apiClient;
@@ -15,50 +19,51 @@ class AutocompleteRepositoryImpl implements AutocompleteRepository {
   AutocompleteRepositoryImpl(this._apiClient);
 
   @override
-  Future<MatchingResponse> getSuggestions({
-    String? handler,
+  Future<List<AutocompleteEntity>> getSuggestions({
     required String query,
     int limit = 10,
     Map<String, dynamic>? filters,
-    String? sessionId,
-    String? userId,
-    String? userIp,
-    String? userCountry,
-    String? requestSource,
-    CancelToken? cancelToken,
+    String handler = 'default',
   }) async {
     try {
+      final options = locator<LablebSdkOptions>();
+      final platformName = options.platformName;
+      if (platformName == null || platformName.trim().isEmpty) {
+        throw ValidationException(
+          'platformName is required to perform autocomplete. Pass '
+          'platformName when constructing LablebSDK '
+          '(see docs.lableb.com/docs/cse/rest).',
+        );
+      }
+
       final request = AutocompleteRequest(
         query: query,
         limit: limit,
         filters: filters,
       );
 
-      final queryParams = request.toQueryParameters();
-      if (sessionId != null) queryParams['session_id'] = sessionId;
-      if (userId != null) queryParams['user_id'] = userId;
-      if (userIp != null) queryParams['user_ip'] = userIp;
-      if (userCountry != null) queryParams['user_country'] = userCountry;
-      if (requestSource != null) queryParams['request_source'] = requestSource;
-
-      final path = (handler?.isNotEmpty ?? false)
-          ? '/autocomplete/$handler'
-          : '/autocomplete';
+      final queryParameters = request.toQueryParameters();
+      queryParameters['apikey'] = _apiClient.apiKey;
+      if (!locator<GlobalSettings>().showOutofStackProducts) {
+        queryParameters['is_available'] = true;
+        queryParameters['quantity_from'] = 1;
+      }
 
       final response = await _apiClient.get(
-        path,
-        queryParameters: queryParams,
-        cancelToken: cancelToken,
+        '/v2/projects/$platformName/indices/${options.indexName}/autocomplete/$handler',
+        queryParameters: queryParameters,
       );
 
-      final responseData = response.data as Map<String, dynamic>;
-      final autocompleteResponse = await Isolate.run(
-        () => MatchingResponse.fromJson(responseData),
+      final autocompleteResponse = AutocompleteResponse.fromJson(
+        response.data as Map<String, dynamic>,
       );
 
-      return autocompleteResponse;
+      return autocompleteResponse.suggestions
+          .map((model) => model.toEntity())
+          .toList();
     } catch (e) {
       rethrow;
     }
   }
 }
+

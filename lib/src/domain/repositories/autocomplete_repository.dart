@@ -1,34 +1,23 @@
+import '../entities/autocomplete_entity.dart';
 import '../../exceptions/exceptions.dart';
-import '../../data/responses/matching_response.dart';
-import 'package:dio/dio.dart';
 
 /// Abstract repository interface for autocomplete operations.
-///
+/// 
 /// This defines the contract for getting autocomplete suggestions.
 abstract class AutocompleteRepository {
   /// Gets autocomplete suggestions for a given query.
-  ///
+  /// 
   /// [query] - The partial query string.
   /// [limit] - Maximum number of suggestions to return (default: 10).
   /// [filters] - Optional filters to apply.
-  /// [sessionId] - Optional session identifier for analytics.
-  /// [userId] - Optional user identifier for analytics.
-  /// [userIp] - Optional user IP address for analytics.
-  /// [userCountry] - Optional user country for analytics.
-  /// [requestSource] - Optional request source for analytics.
-  ///
-  /// Returns a unified autocomplete response.
+  /// 
+  /// Returns a list of autocomplete suggestions.
   /// Throws [LablebException] if the request fails.
-  Future<MatchingResponse> getSuggestions({
-    String? handler,
+  Future<List<AutocompleteEntity>> getSuggestions({
     required String query,
     int limit = 10,
     Map<String, dynamic>? filters,
-    String? sessionId,
-    String? userId,
-    String? userIp,
-    String? userCountry,
-    String? requestSource,
-    CancelToken? cancelToken,
+    String handler = 'default',
   });
 }
+

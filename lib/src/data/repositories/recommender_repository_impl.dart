@@ -1,11 +1,13 @@
-import 'dart:isolate';
 import '../../api/api_client.dart';
-import 'package:dio/dio.dart';
+import '../../di/locator.dart';
+import '../../domain/entities/global_settings_entity.dart';
+import '../../domain/entities/recommender_entity.dart';
 import '../../domain/repositories/recommender_repository.dart';
-import '../responses/matching_response.dart';
+import '../requests/recommender_request.dart';
+import '../responses/recommender_response.dart';
 
 /// Implementation of [RecommenderRepository] for recommendation operations.
-///
+/// 
 /// This repository handles all communication with the recommender API endpoints.
 class RecommenderRepositoryImpl implements RecommenderRepository {
   /// The API client for making HTTP requests.
@@ -14,60 +16,41 @@ class RecommenderRepositoryImpl implements RecommenderRepository {
   RecommenderRepositoryImpl(this._apiClient);
 
   @override
-  Future<MatchingResponse> getRecommendations({
-    String? handler,
+  Future<List<RecommenderEntity>> getRecommendations({
+    String? userId,
     String? itemId,
     int limit = 10,
     Map<String, dynamic>? filters,
     Map<String, dynamic>? context,
-    String? sessionId,
-    String? userId,
-    String? userIp,
-    String? userCountry,
-    String? requestSource,
-    CancelToken? cancelToken,
   }) async {
+    if (!locator<GlobalSettings>().hasRecommendation) {
+      return const <RecommenderEntity>[];
+    }
+
     try {
-      final queryParams = <String, dynamic>{
-        'limit': limit,
-      };
-
-      if (itemId != null) queryParams['id'] = itemId;
-      if (filters != null) {
-        // Assuming filters are flattened as before
-        filters.forEach((key, value) {
-          queryParams[key] = value;
-        });
-      }
-      if (context != null) {
-        // Context might need to be serialized differently, but for now, add as is
-        context.forEach((key, value) {
-          queryParams['context_$key'] = value; // or something
-        });
-      }
-      if (sessionId != null) queryParams['session_id'] = sessionId;
-      if (userId != null) queryParams['user_id'] = userId;
-      if (userIp != null) queryParams['user_ip'] = userIp;
-      if (userCountry != null) queryParams['user_country'] = userCountry;
-      if (requestSource != null) queryParams['request_source'] = requestSource;
-
-      final path =
-          (handler?.isNotEmpty ?? false) ? '/recommend/$handler' : '/recommend';
-
-      final response = await _apiClient.get(
-        path,
-        queryParameters: queryParams,
-        cancelToken: cancelToken,
+      final request = RecommenderRequest(
+        userId: userId,
+        itemId: itemId,
+        limit: limit,
+        filters: filters,
+        context: context,
       );
 
-      final responseData = response.data as Map<String, dynamic>;
-      final recommenderResponse = await Isolate.run(
-        () => MatchingResponse.fromJson(responseData),
+      final response = await _apiClient.post(
+        '/recommender',
+        data: request.toJson(),
       );
 
-      return recommenderResponse;
+      final recommenderResponse = RecommenderResponse.fromJson(
+        response.data as Map<String, dynamic>,
+      );
+
+      return recommenderResponse.recommendations
+          .map((model) => model.toEntity())
+          .toList();
     } catch (e) {
       rethrow;
     }
   }
 }
+

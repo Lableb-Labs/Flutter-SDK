@@ -1,13 +1,18 @@
-import 'dart:isolate';
 import '../../api/api_client.dart';
-import 'package:dio/dio.dart';
+import '../../di/locator.dart';
+import '../../domain/entities/global_settings_entity.dart';
 import '../../domain/repositories/search_repository.dart';
+import '../../exceptions/exceptions.dart';
 import '../requests/search_request.dart';
-import '../../data/responses/matching_response.dart';
+import '../responses/search_response.dart';
 
 /// Implementation of [SearchRepository] for search operations.
 ///
-/// This repository handles all communication with the search API endpoints.
+/// Per Lableb's REST API docs (docs.lableb.com/docs/cse/rest), search is
+/// scoped to `/v2/projects/{platformName}/indices/{indexName}/search/{handler}`
+/// and authenticates via an `apikey` query parameter — not the
+/// `Authorization: Bearer` header the rest of this SDK's [ApiClientBase]
+/// sends by default (that header is harmless to leave in place).
 class SearchRepositoryImpl implements SearchRepository {
   /// The API client for making HTTP requests.
   final ApiClientBase _apiClient;
@@ -15,21 +20,24 @@ class SearchRepositoryImpl implements SearchRepository {
   SearchRepositoryImpl(this._apiClient);
 
   @override
-  Future<MatchingResponse> search({
-    String? handler,
+  Future<SearchResult> search({
     required String query,
     Map<String, dynamic>? filters,
-    String? sort,
+    Map<String, String>? sort,
     int page = 1,
     int pageSize = 10,
-    String? sessionId,
-    String? userId,
-    String? userIp,
-    String? userCountry,
-    String? requestSource,
-    CancelToken? cancelToken,
+    String handler = 'default',
   }) async {
     try {
+      final options = locator<LablebSdkOptions>();
+      final platformName = options.platformName;
+      if (platformName == null || platformName.trim().isEmpty) {
+        throw ValidationException(
+          'platformName is required to perform search. Pass platformName '
+          'when constructing LablebSDK (see docs.lableb.com/docs/cse/rest).',
+        );
+      }
+
       final request = SearchRequest(
         query: query,
         filters: filters,
@@ -38,30 +46,35 @@ class SearchRepositoryImpl implements SearchRepository {
         pageSize: pageSize,
       );
 
-      final queryParams = request.toQueryParameters();
-      if (sessionId != null) queryParams['session_id'] = sessionId;
-      if (userId != null) queryParams['user_id'] = userId;
-      if (userIp != null) queryParams['user_ip'] = userIp;
-      if (userCountry != null) queryParams['user_country'] = userCountry;
-      if (requestSource != null) queryParams['request_source'] = requestSource;
-
-      final path =
-          (handler?.isNotEmpty ?? false) ? '/search/$handler' : '/search';
+      final queryParameters = request.toQueryParameters();
+      queryParameters['apikey'] = _apiClient.apiKey;
+      if (!locator<GlobalSettings>().showOutofStackProducts) {
+        queryParameters['is_available'] = true;
+        queryParameters['quantity_from'] = 1;
+      }
 
       final response = await _apiClient.get(
-        path,
-        queryParameters: queryParams,
-        cancelToken: cancelToken,
+        '/v2/projects/$platformName/indices/${options.indexName}/search/$handler',
+        queryParameters: queryParameters,
       );
 
-      final responseData = response.data as Map<String, dynamic>;
-      final searchResponse = await Isolate.run(
-        () => MatchingResponse.fromJson(responseData),
+      final searchResponse = SearchResponse.fromJson(
+        response.data as Map<String, dynamic>,
+        page: page,
+        pageSize: pageSize,
       );
 
-      return searchResponse;
+      return SearchResult(
+        results: searchResponse.results
+            .map((model) => model.toEntity())
+            .toList(),
+        pagination: searchResponse.pagination,
+        totalResults: searchResponse.totalResults,
+        executionTime: searchResponse.executionTime,
+      );
     } catch (e) {
       rethrow;
     }
   }
 }
+
