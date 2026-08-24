@@ -46,6 +46,7 @@ export 'src/core/pagination_model.dart';
 export 'src/domain/entities/index_entity.dart';
 export 'src/domain/entities/search_entity.dart';
 export 'src/domain/entities/autocomplete_entity.dart';
+export 'src/domain/entities/preorder_campaign_entity.dart';
 export 'src/domain/entities/recommender_entity.dart';
 export 'src/domain/entities/feedback_entity.dart';
 export 'src/domain/entities/global_settings_entity.dart';
