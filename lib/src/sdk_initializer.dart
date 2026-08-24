@@ -52,6 +52,13 @@ class LablebSDK {
           ? locator<GlobalSettings>().showOutofStackProducts
           : false;
 
+  /// Whether the `quantity_from` search/autocomplete filter is disabled,
+  /// per the Lableb dashboard's global settings.
+  static bool get disableQuantityFilter =>
+      locator.isRegistered<GlobalSettings>()
+          ? locator<GlobalSettings>().disableQuantityFilter
+          : false;
+
   /// Global instance used by Zid/AppsBunches integrations.
   static LablebSDK get instance {
     final current = _instance;

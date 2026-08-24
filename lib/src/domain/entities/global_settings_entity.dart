@@ -9,9 +9,14 @@ class GlobalSettings {
   /// When false/unset, the recommender feature is disabled.
   final bool hasRecommendation;
 
+  /// When true, search and autocomplete requests omit the `quantity_from`
+  /// filter (independent of [showOutofStackProducts]'s `is_available` filter).
+  final bool disableQuantityFilter;
+
   const GlobalSettings({
     this.showOutofStackProducts = false,
     this.hasRecommendation = false,
+    this.disableQuantityFilter = false,
   });
 
   /// Represents the "not fetched yet" / "fetch failed" state, matching

@@ -120,6 +120,23 @@ void main() {
       expect(captured.single.containsKey('quantity_from'), isFalse);
     });
 
+    test('omits quantity_from but keeps is_available when disableQuantityFilter is enabled', () async {
+      setGlobalSettings(const GlobalSettings(disableQuantityFilter: true));
+      when(mockApiClient.get(
+        any,
+        queryParameters: anyNamed('queryParameters'),
+      )).thenAnswer((_) async => lablebResponse({'results': []}));
+
+      await repository.getSuggestions(query: 'boo');
+
+      final captured = verify(mockApiClient.get(
+        any,
+        queryParameters: captureAnyNamed('queryParameters'),
+      )).captured;
+      expect(captured.single['is_available'], true);
+      expect(captured.single.containsKey('quantity_from'), isFalse);
+    });
+
     test('unwraps the response envelope and falls back to name/metadata for flat items', () async {
       when(mockApiClient.get(
         any,

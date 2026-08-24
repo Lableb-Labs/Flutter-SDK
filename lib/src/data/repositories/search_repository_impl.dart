@@ -48,9 +48,12 @@ class SearchRepositoryImpl implements SearchRepository {
 
       final queryParameters = request.toQueryParameters();
       queryParameters['apikey'] = _apiClient.apiKey;
-      if (!locator<GlobalSettings>().showOutofStackProducts) {
+      final globalSettings = locator<GlobalSettings>();
+      if (!globalSettings.showOutofStackProducts) {
         queryParameters['is_available'] = true;
-        queryParameters['quantity_from'] = 1;
+        if (!globalSettings.disableQuantityFilter) {
+          queryParameters['quantity_from'] = 1;
+        }
       }
 
       final response = await _apiClient.get(

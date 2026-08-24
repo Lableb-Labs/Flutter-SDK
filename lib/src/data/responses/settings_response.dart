@@ -7,10 +7,12 @@ import '../../domain/entities/global_settings_entity.dart';
 class SettingsResponse {
   final bool showOutofStackProducts;
   final bool hasRecommendation;
+  final bool disableQuantityFilter;
 
   const SettingsResponse({
     required this.showOutofStackProducts,
     required this.hasRecommendation,
+    required this.disableQuantityFilter,
   });
 
   factory SettingsResponse.fromJson(Map<String, dynamic> json) {
@@ -19,11 +21,14 @@ class SettingsResponse {
       showOutofStackProducts:
           response['showOutofStackProducts'] as bool? ?? false,
       hasRecommendation: response['hasRecommendation'] as bool? ?? false,
+      disableQuantityFilter:
+          response['disableQuantityFilter'] as bool? ?? false,
     );
   }
 
   GlobalSettings toEntity() => GlobalSettings(
         showOutofStackProducts: showOutofStackProducts,
         hasRecommendation: hasRecommendation,
+        disableQuantityFilter: disableQuantityFilter,
       );
 }
