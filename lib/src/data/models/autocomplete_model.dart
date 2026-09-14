@@ -30,6 +30,18 @@ class AutocompleteModel {
   /// True when a pre-order campaign slot exists and is not exhausted.
   final bool preorderSlotsAvailable;
 
+  /// True when this product is part of an active pre-order campaign.
+  final bool isPreorderCampaign;
+
+  /// True when the product has selectable options (e.g. size, color).
+  final bool hasOptions;
+
+  /// True when the product has custom fields.
+  final bool hasFields;
+
+  /// Display-ready sale price, pre-formatted by the backend.
+  final String? formattedSalePrice;
+
   AutocompleteModel({
     required this.text,
     this.metadata,
@@ -39,6 +51,10 @@ class AutocompleteModel {
     this.effectivePreorderCampaign,
     this.preorderStockBehavior,
     this.preorderSlotsAvailable = false,
+    this.isPreorderCampaign = false,
+    this.hasOptions = false,
+    this.hasFields = false,
+    this.formattedSalePrice,
   });
 
   /// Creates an [AutocompleteModel] from a JSON map.
@@ -67,13 +83,16 @@ class AutocompleteModel {
       metadata: metadata,
       score: json['score'] != null ? (json['score'] as num).toDouble() : null,
       canBePreordered: metadata['can_be_preordered'] as bool? ?? false,
-      preorderCampaign: PreorderCampaignModel.fromJsonOrNull(
-          metadata['preorder_campaign']),
+      preorderCampaign: PreorderCampaignModel.fromFlatJson(metadata),
       effectivePreorderCampaign: PreorderCampaignModel.fromJsonOrNull(
           metadata['effective_preorder_campaign']),
       preorderStockBehavior: metadata['preorder_stock_behavior'] as String?,
       preorderSlotsAvailable:
           metadata['preorder_slots_available'] as bool? ?? false,
+      isPreorderCampaign: metadata['is_preorder_campaign'] as bool? ?? false,
+      hasOptions: metadata['has_options'] as bool? ?? false,
+      hasFields: metadata['has_fields'] as bool? ?? false,
+      formattedSalePrice: metadata['formatted_sale_price'] as String?,
     );
   }
 
@@ -97,6 +116,10 @@ class AutocompleteModel {
       effectivePreorderCampaign: effectivePreorderCampaign?.toEntity(),
       preorderStockBehavior: preorderStockBehavior,
       preorderSlotsAvailable: preorderSlotsAvailable,
+      isPreorderCampaign: isPreorderCampaign,
+      hasOptions: hasOptions,
+      hasFields: hasFields,
+      formattedSalePrice: formattedSalePrice,
     );
   }
 
@@ -115,6 +138,10 @@ class AutocompleteModel {
           : null,
       preorderStockBehavior: entity.preorderStockBehavior,
       preorderSlotsAvailable: entity.preorderSlotsAvailable,
+      isPreorderCampaign: entity.isPreorderCampaign,
+      hasOptions: entity.hasOptions,
+      hasFields: entity.hasFields,
+      formattedSalePrice: entity.formattedSalePrice,
     );
   }
 }

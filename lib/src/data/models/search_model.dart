@@ -33,6 +33,18 @@ class SearchModel {
   /// True when a pre-order campaign slot exists and is not exhausted.
   final bool preorderSlotsAvailable;
 
+  /// True when this product is part of an active pre-order campaign.
+  final bool isPreorderCampaign;
+
+  /// True when the product has selectable options (e.g. size, color).
+  final bool hasOptions;
+
+  /// True when the product has custom fields.
+  final bool hasFields;
+
+  /// Display-ready sale price, pre-formatted by the backend.
+  final String? formattedSalePrice;
+
   SearchModel({
     required this.id,
     required this.data,
@@ -43,6 +55,10 @@ class SearchModel {
     this.effectivePreorderCampaign,
     this.preorderStockBehavior,
     this.preorderSlotsAvailable = false,
+    this.isPreorderCampaign = false,
+    this.hasOptions = false,
+    this.hasFields = false,
+    this.formattedSalePrice,
   });
 
   /// Creates a [SearchModel] from a JSON map.
@@ -77,13 +93,16 @@ class SearchModel {
             )
           : null,
       canBePreordered: data['can_be_preordered'] as bool? ?? false,
-      preorderCampaign:
-          PreorderCampaignModel.fromJsonOrNull(data['preorder_campaign']),
+      preorderCampaign: PreorderCampaignModel.fromFlatJson(data),
       effectivePreorderCampaign: PreorderCampaignModel.fromJsonOrNull(
           data['effective_preorder_campaign']),
       preorderStockBehavior: data['preorder_stock_behavior'] as String?,
       preorderSlotsAvailable:
           data['preorder_slots_available'] as bool? ?? false,
+      isPreorderCampaign: data['is_preorder_campaign'] as bool? ?? false,
+      hasOptions: data['has_options'] as bool? ?? false,
+      hasFields: data['has_fields'] as bool? ?? false,
+      formattedSalePrice: data['formatted_sale_price'] as String?,
     );
   }
 
@@ -109,6 +128,10 @@ class SearchModel {
       effectivePreorderCampaign: effectivePreorderCampaign?.toEntity(),
       preorderStockBehavior: preorderStockBehavior,
       preorderSlotsAvailable: preorderSlotsAvailable,
+      isPreorderCampaign: isPreorderCampaign,
+      hasOptions: hasOptions,
+      hasFields: hasFields,
+      formattedSalePrice: formattedSalePrice,
     );
   }
 
@@ -128,6 +151,10 @@ class SearchModel {
           : null,
       preorderStockBehavior: entity.preorderStockBehavior,
       preorderSlotsAvailable: entity.preorderSlotsAvailable,
+      isPreorderCampaign: entity.isPreorderCampaign,
+      hasOptions: entity.hasOptions,
+      hasFields: entity.hasFields,
+      formattedSalePrice: entity.formattedSalePrice,
     );
   }
 }

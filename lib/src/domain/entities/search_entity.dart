@@ -31,6 +31,18 @@ class SearchEntity {
   /// True when a pre-order campaign slot exists and is not exhausted.
   final bool preorderSlotsAvailable;
 
+  /// True when this product is part of an active pre-order campaign.
+  final bool isPreorderCampaign;
+
+  /// True when the product has selectable options (e.g. size, color).
+  final bool hasOptions;
+
+  /// True when the product has custom fields.
+  final bool hasFields;
+
+  /// Display-ready sale price, pre-formatted by the backend.
+  final String? formattedSalePrice;
+
   SearchEntity({
     required this.id,
     required this.data,
@@ -41,5 +53,9 @@ class SearchEntity {
     this.effectivePreorderCampaign,
     this.preorderStockBehavior,
     this.preorderSlotsAvailable = false,
+    this.isPreorderCampaign = false,
+    this.hasOptions = false,
+    this.hasFields = false,
+    this.formattedSalePrice,
   });
 }
