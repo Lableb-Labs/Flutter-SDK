@@ -1,11 +1,10 @@
 # Lableb Flutter SDK
 
-A production-ready Flutter SDK for integrating with the Lableb platform. This SDK provides a clean, type-safe interface to all Lableb API endpoints including search, autocomplete, recommendations, indexing, and feedback.
+A production-ready Flutter SDK for integrating with the Lableb platform. This SDK provides a clean, type-safe interface to all Lableb API endpoints including search, autocomplete, recommendations, and feedback.
 
 ## Features
 
 ✅ **Complete API Coverage**
-- Index/Data ingestion
 - Search with filtering, sorting, and pagination
 - Autocomplete suggestions
 - Recommendations
@@ -61,27 +60,13 @@ final sdk = LablebSDK(
 );
 ```
 
-### 2. Upload Documents
-
-```dart
-await sdk.index.indexBatch([
-  IndexEntity(
-    id: 'item-1',
-    data: {
-      'title': 'Example Product',
-      'description': 'Product description',
-      'price': 99.99,
-    },
-  ),
-]);
-```
-
-### 3. Perform Search
+### 2. Perform Search
 
 ```dart
 final result = await sdk
     .searchRequest()
     .forQuery('product')
+    .withHandler('suggest')
     .withFilters({'category': 'electronics'})
     .sortBy('price', direction: 'asc')
     .paginate(page: 1, pageSize: 10)
@@ -89,20 +74,27 @@ final result = await sdk
 
 print('Found ${result.results.length} results');
 for (final item in result.results) {
-  print('${item.id}: ${item.data['title']}');
+  print('${item.id}: ${item.data['name']}'); // keys come from your index schema
 }
 ```
 
-### 4. Get Autocomplete Suggestions
+> **Search handlers.** Every search and autocomplete request runs against a
+> *handler* configured on your project's Lableb dashboard. The SDK defaults to
+> `'default'`, and a project that is not provisioned with that handler returns
+> HTTP 404. Pass the handler your project actually has — `.withHandler(...)` on
+> the search builder, `handler:` on `getSuggestions`.
+
+### 3. Get Autocomplete Suggestions
 
 ```dart
 final suggestions = await sdk.autocomplete.getSuggestions(
   query: 'prod',
   limit: 5,
+  handler: 'suggest',
 );
 ```
 
-### 5. Get Recommendations
+### 4. Get Recommendations
 
 ```dart
 final recommendations = await sdk
@@ -112,31 +104,29 @@ final recommendations = await sdk
     .send();
 ```
 
-### 6. Submit Feedback
+### 5. Submit Feedback
+
+Report what a user did with a search result, so the platform can learn from it.
+The project and index are taken from the `platformName` and `indexName` you
+constructed the SDK with, so there is nothing extra to supply.
 
 ```dart
 await sdk
     .searchFeedbackEvent()
-    .forCollection(project: 'your-project', collection: 'your-collection')
     .forQuery('product')
     .event(SearchFeedbackEventType.click)
     .forItem(id: 'item-1', order: 1)
+    .withHandler('suggest')
     .fromUser(id: 'user-123', sessionId: 'session-123')
     .send();
-
-await sdk
-    .autocompleteFeedback()
-    .forQuery('prod')
-    .forSuggestion('suggestion-1')
-    .value('clicked')
-    .send();
-
-await sdk
-    .recommenderFeedback()
-    .forRecommendation('item-2')
-    .value('positive')
-    .send();
 ```
+
+`event(...)` accepts `click`, `addToCart` and `purchase`.
+
+> **Autocomplete and recommender feedback are not supported yet.**
+> `sdk.autocompleteFeedback()` and `sdk.recommenderFeedback()` exist but do not
+> target the platform's documented feedback endpoints, and requests made through
+> them are rejected. Use search feedback only until they are rebuilt.
 
 ## Error Handling
 
@@ -144,11 +134,15 @@ The SDK provides comprehensive error handling with custom exception types:
 
 ```dart
 try {
-  await sdk.searchRequest().forQuery('example').send();
+  await sdk.searchRequest().forQuery('example').withHandler('suggest').send();
 } on NetworkException catch (e) {
   print('Network error: ${e.message}');
 } on UnauthorizedException catch (e) {
   print('Unauthorized: ${e.message}');
+} on ForbiddenException catch (e) {
+  print('Forbidden: ${e.message}');
+} on NotFoundException catch (e) {
+  print('Not found: ${e.message}');
 } on ValidationException catch (e) {
   print('Validation error: ${e.message}');
 } on ServerException catch (e) {
@@ -208,16 +202,10 @@ lib/
 
 ## API Reference
 
-### IndexRepository
-
-- `indexItem(IndexEntity item)` - Index a single item
-- `indexBatch(List<IndexEntity> items)` - Index multiple items
-- `updateItem(IndexEntity item)` - Update an existing item
-- `deleteItem(String id)` - Delete an item
-
 ### SearchRepository
 
-- `search({required String query, ...})` - Perform a search with optional filters, sorting, and pagination
+- `search({required String query, ...})` - Perform a search with optional
+  filters, sorting, and pagination. **Deprecated** - use `sdk.searchRequest()`.
 
 ### AutocompleteRepository
 
@@ -225,14 +213,19 @@ lib/
 
 ### RecommenderRepository
 
-- `getRecommendations({String? userId, String? itemId, ...})` - Get recommendations
+- `getRecommendations({String? userId, String? itemId, ...})` - Get
+  recommendations. **Deprecated** - use `sdk.recommendations()`.
 
 ### FeedbackRepository
 
-- `submitSearchFeedbackEvent(...)` - Submit search feedback events (click/add_to_cart/purchase)
-- `submitSearchFeedback(...)` - Legacy search feedback (deprecated)
-- `submitAutocompleteFeedback(...)` - Submit feedback for autocomplete
-- `submitRecommenderFeedback(...)` - Submit feedback for recommendations
+- `submitSearchFeedbackEvent(...)` - Submit search feedback events
+  (click/add_to_cart/purchase). **Deprecated** - use `sdk.searchFeedbackEvent()`.
+- `submitSearchFeedback(...)` - Legacy search feedback. **Deprecated** - use
+  `sdk.searchFeedbackEvent()`.
+- `submitAutocompleteFeedback(...)` - Submit feedback for autocomplete.
+  **Deprecated** - use `sdk.autocompleteFeedback()`.
+- `submitRecommenderFeedback(...)` - Submit feedback for recommendations.
+  **Deprecated** - use `sdk.recommenderFeedback()`.
 
 ## Contributing
 
