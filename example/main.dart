@@ -188,8 +188,6 @@ void main() async {
   try {
     // Submit search feedback event (NEW API: click/add_to_cart/purchase)
     await sdk.feedback.submitSearchFeedbackEvent(
-      project: 'wptest',
-      collection: 'posts',
       handler: 'default',
       query: 'product',
       eventType: SearchFeedbackEventType.click,

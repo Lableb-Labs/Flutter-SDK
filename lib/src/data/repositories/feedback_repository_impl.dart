@@ -1,4 +1,6 @@
 import '../../api/api_client.dart';
+import '../../di/locator.dart';
+import '../../exceptions/exceptions.dart';
 import '../../domain/repositories/feedback_repository.dart';
 import '../requests/feedback_request.dart';
 import '../responses/feedback_response.dart';
@@ -16,8 +18,6 @@ class FeedbackRepositoryImpl implements FeedbackRepository {
 
   @override
   Future<void> submitSearchFeedbackEvent({
-    required String project,
-    required String collection,
     String handler = 'default',
     required String query,
     required SearchFeedbackEventType eventType,
@@ -29,11 +29,20 @@ class FeedbackRepositoryImpl implements FeedbackRepository {
     String? userId,
     String? userIp,
     String? userCountry,
-    String? token,
   }) async {
+    final options = locator<LablebSdkOptions>();
+    final platformName = options.platformName;
+    if (platformName == null || platformName.trim().isEmpty) {
+      throw ValidationException(
+        'platformName is required to submit search feedback. Pass '
+        'platformName when constructing LablebSDK (see '
+        'docs.lableb.com/docs/cse/rest/feedback/search-feedback).',
+      );
+    }
+
     final request = SearchFeedbackEventRequest(
-      project: project,
-      collection: collection,
+      platformName: platformName,
+      indexName: options.indexName,
       handler: handler,
       query: query,
       eventType: eventType,
@@ -45,14 +54,12 @@ class FeedbackRepositoryImpl implements FeedbackRepository {
       userId: userId,
       userIp: userIp,
       userCountry: userCountry,
-      // If token isn't supplied, default to the SDK API key since docs show
-      // `token=...` in query string.
-      token: token ?? _apiClient.apiKey,
     );
 
     final response = await _apiClient.post(
       request.buildPath(),
-      queryParameters: request.toQueryParameters(),
+      data: request.toBody(),
+      queryParameters: {'apikey': _apiClient.apiKey},
     );
 
     // Response payload shape differs from other feedback endpoints.
@@ -85,49 +92,23 @@ class FeedbackRepositoryImpl implements FeedbackRepository {
       final userId = metadata?['user_id'] as String?;
       final userIp = metadata?['user_ip'] as String?;
       final userCountry = metadata?['user_country'] as String?;
-      final project = metadata?['project'] as String?;
-      final collection = metadata?['collection'] as String?;
       final handler = metadata?['handler'] as String? ?? 'default';
 
-      if (project != null && collection != null) {
-        await submitSearchFeedbackEvent(
-          project: project,
-          collection: collection,
-          handler: handler,
-          query: query,
-          eventType: SearchFeedbackEventType.click,
-          itemId: resultId,
-          itemOrder: itemOrder,
-          itemPrice: itemPrice,
-          url: url,
-          sessionId: sessionId,
-          userId: userId,
-          userIp: userIp,
-          userCountry: userCountry,
-        );
-        return;
-      }
-
-      final request = FeedbackRequest(
-        feedbackType: 'search',
+      // The former `/feedback/search` fallback is gone: the documented API has
+      // a single search-feedback endpoint, so this always delegates to it.
+      await submitSearchFeedbackEvent(
+        handler: handler,
         query: query,
-        resultId: resultId,
-        feedbackValue: feedbackValue,
-        metadata: metadata,
+        eventType: SearchFeedbackEventType.click,
+        itemId: resultId,
+        itemOrder: itemOrder,
+        itemPrice: itemPrice,
+        url: url,
+        sessionId: sessionId,
+        userId: userId,
+        userIp: userIp,
+        userCountry: userCountry,
       );
-
-      final response = await _apiClient.post(
-        '/feedback/search',
-        data: request.toJson(),
-      );
-
-      final feedbackResponse = FeedbackResponse.fromJson(
-        response.data as Map<String, dynamic>,
-      );
-
-      if (!feedbackResponse.success) {
-        throw Exception(feedbackResponse.message);
-      }
     } catch (e) {
       rethrow;
     }

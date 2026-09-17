@@ -37,7 +37,6 @@ abstract class FeedbackRepository {
   /// ```dart
   /// await sdk
   ///     .searchFeedbackEvent()
-  ///     .forCollection(project: 'wptest', collection: 'posts', handler: 'default')
   ///     .forQuery('product')
   ///     .event(SearchFeedbackEventType.click)
   ///     .forItem(id: 'item-1', order: 1, price: 95.5)
@@ -46,12 +45,14 @@ abstract class FeedbackRepository {
   /// ```
   ///
   /// REST endpoint:
-  /// `POST /api/v1/{project}/collections/{collection}/search/{handler}/feedback/events`
+  /// `POST /v2/projects/{platformName}/indices/{indexName}/search/{handler}/feedback/events`
   ///
-  /// All parameters are sent as **query string parameters** (no request body).
+  /// The project and index segments are taken from the `platformName` and
+  /// `indexName` given to [LablebSDK]; they are not passed per call. The
+  /// events travel as a **JSON array body**, authenticated with an `apikey`
+  /// query parameter that must carry `Search` permission.
   ///
   /// Required:
-  /// - [project], [collection]
   /// - [query]
   /// - [eventType]
   /// - [itemId], [itemOrder] (starting from 1)
@@ -60,13 +61,10 @@ abstract class FeedbackRepository {
   /// - [handler] (defaults to `default`)
   /// - [itemPrice], [url]
   /// - [sessionId], [userId], [userIp], [userCountry]
-  /// - [token] (if the API expects `token` in the query string)
   ///
   /// Throws [LablebException] if submission fails.
   @Deprecated('Use sdk.searchFeedbackEvent() fluent builder instead.')
   Future<void> submitSearchFeedbackEvent({
-    required String project,
-    required String collection,
     String handler = 'default',
     required String query,
     required SearchFeedbackEventType eventType,
@@ -78,7 +76,6 @@ abstract class FeedbackRepository {
     String? userId,
     String? userIp,
     String? userCountry,
-    String? token,
   });
 
   /// Submits feedback for a search result.
