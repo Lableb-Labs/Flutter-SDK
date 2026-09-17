@@ -12,7 +12,8 @@ plus a turnkey integration path for Zid merchant apps.
   sandbox routing, encrypted token storage, and merchant global settings.
 - **Pre-order support** — campaign, options, fields, and formatted sale price
   attributes on search and autocomplete results.
-- **Drop-in recommendations widget**, page-route analytics, and cart event hooks.
+- **Drop-in recommendations widget** and page-route analytics, plus cart hooks
+  (registration only — see [Cart event handlers](#cart-event-handlers)).
 - **Typed error handling** with a single `LablebException` base class.
 - **Clean-architecture layering** — domain entities and abstract repositories over
   a data layer of models, requests, and responses, wired through `get_it`.
@@ -90,14 +91,19 @@ final sdk = LablebSDK(
   baseUrl: 'https://api.lableb.com',
   apiKey: 'your-api-key',
   indexName: 'index',        // defaults to 'index'
-  platformName: 'zid_56705', // optional; enables global settings fetch
+  platformName: 'zid_56705', // required for search and autocomplete
   enableLogging: true,
 );
 ```
 
-Only `baseUrl` and `apiKey` are required.
+The constructor requires only `baseUrl` and `apiKey`, but **`platformName` is
+required in practice**: search and autocomplete each throw a
+`ValidationException` without it, because every request is scoped to
+`/v2/projects/{platformName}/indices/{indexName}/...`. Indexing and feedback are
+the only features that work without it. Pass it unless you are certain you need
+neither search nor autocomplete.
 
-Supplying `platformName` starts the merchant global-settings fetch, but the
+Supplying `platformName` also starts the merchant global-settings fetch, but the
 constructor **does not wait for it** — it is fire-and-forget, because a Dart
 constructor cannot be `async`. Until it resolves, every flag in
 [Global settings](#global-settings) reads `false`. `LablebSDK.init()` awaits the
@@ -296,7 +302,8 @@ await LablebSDK.trackPageRoute(pageName: 'product_detail');
 
 ### Cart event handlers
 
-Let Lableb-rendered widgets drive your app's cart:
+Register callbacks so that cart activity originating inside Lableb-rendered UI
+can reach your app:
 
 ```dart
 await LablebSDK.registerCartEventHandlers(
@@ -308,6 +315,12 @@ await LablebSDK.registerCartEventHandlers(
   },
 );
 ```
+
+> **No SDK code path invokes these callbacks yet.** Registration succeeds and the
+> handlers are stored, but nothing in this version fires them —
+> `recommendationsWidget()` included — so they will not run. Treat this as a
+> forward-looking hook rather than a working integration point, and keep driving
+> your cart from your own widgets' callbacks.
 
 ## Pre-order fields
 
