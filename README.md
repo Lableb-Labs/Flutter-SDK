@@ -120,6 +120,7 @@ final result = await sdk
     .withFilters({'brand': 'Dell'})
     .sortBy('price', direction: 'asc')
     .paginate(page: 1, pageSize: 10)
+    .withHandler('suggest') // see "Search handlers" below
     .send();
 
 print('${result.totalResults} results in ${result.executionTime}ms');
@@ -134,11 +135,31 @@ if (result.pagination.canGoNext) {
 ```
 
 `sortBy` is a convenience for a single field. For multi-field sorting use
-`withSort({'price': 'asc', 'rating': 'desc'})`. To target a non-default search
-handler configured on your Lableb dashboard, add `.withHandler('my-handler')`.
+`withSort({'price': 'asc', 'rating': 'desc'})`.
 
 `send()` returns a `SearchResult` with `results` (`List<SearchEntity>`),
 `pagination`, `totalResults`, and `executionTime`.
+
+### Search handlers
+
+Every search and autocomplete request targets a **handler** configured on your
+Lableb dashboard, and it is part of the URL:
+
+```
+/v2/projects/{platformName}/indices/{indexName}/search/{handler}
+```
+
+The SDK defaults this to `'default'`, **which many projects do not have**. A
+project provisioned with only a `suggest` handler returns `404` for
+`'default'` — verified against a live Zid project, where `search/default` gives
+HTTP 404 and `search/suggest` gives HTTP 200.
+
+> If searches or suggestions fail with `NotFoundException`, check the handler
+> name before anything else. The query is usually fine; the handler is wrong.
+> Look up the handlers configured for your project on the Lableb dashboard and
+> pass one explicitly — `.withHandler(...)` for search, the `handler:` argument
+> for autocomplete and feedback. The examples here use `'suggest'`; substitute
+> your own.
 
 ## Autocomplete
 
@@ -146,12 +167,15 @@ handler configured on your Lableb dashboard, add `.withHandler('my-handler')`.
 final suggestions = await sdk.autocomplete.getSuggestions(
   query: 'lap',
   limit: 5,
+  handler: 'suggest', // see "Search handlers" above
 );
 
 for (final suggestion in suggestions) {
   print('${suggestion.text} (${suggestion.score})');
 }
 ```
+
+`handler` defaults to `'default'` here too, with the same 404 consequence.
 
 ## Recommendations
 
@@ -203,7 +227,19 @@ await sdk
 `order` is the item's 1-based position in the result list. The available event
 types are `SearchFeedbackEventType.click`, `.addToCart`, and `.purchase`.
 Optional steps: `.withUrl(...)`, `.withToken(...)`, and a `handler` argument on
-`forCollection`.
+`forCollection` — which defaults to `'default'` and carries the same caveat as
+[Search handlers](#search-handlers).
+
+`project` and `collection` are **not** the same values as the SDK's
+`platformName` and `indexName`, and this endpoint uses a different API version:
+
+```
+search:   GET  /v2/projects/{platformName}/indices/{indexName}/search/{handler}
+feedback: POST /api/v1/{project}/collections/{collection}/search/{handler}/feedback/events
+```
+
+Passing `platformName` / `indexName` here returns `NotFoundException`. Take the
+correct project and collection names from your Lableb dashboard.
 
 To inspect the payload without hitting the network — useful in tests — call
 `.build()` instead of `.send()`.
