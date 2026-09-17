@@ -18,7 +18,7 @@ class LablebRecommendationWidget extends StatelessWidget {
       return const <RecommenderEntity>[];
     }
     try {
-      return locator<RecommendationsBuilderStart>()
+      return await locator<RecommendationsBuilderStart>()
           .forItem(productId)
           .limit(10)
           .send();

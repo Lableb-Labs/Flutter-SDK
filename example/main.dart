@@ -1,3 +1,7 @@
+// This example prints its results so it reads as a runnable script; `print` is
+// the output medium here, not a debugging leftover.
+// ignore_for_file: avoid_print
+
 import 'package:lableb_flutter_sdk/lableb_flutter_sdk.dart';
 
 /// Example usage of the Lableb Flutter SDK.

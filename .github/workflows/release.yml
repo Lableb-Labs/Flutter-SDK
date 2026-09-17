@@ -1,0 +1,102 @@
+name: Release
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # Gate: the same analyze + test run that PRs get.
+  verify:
+    uses: ./.github/workflows/ci.yml
+
+  tag:
+    name: Tag release
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Needed so the existing-tag check below can see every tag.
+          fetch-depth: 0
+          # A PAT is required here, not the default GITHUB_TOKEN: tags pushed
+          # with GITHUB_TOKEN do not trigger other workflows, so publish.yml
+          # would never fire. See .github/workflows/README.md.
+          token: ${{ secrets.RELEASE_TOKEN }}
+
+      - name: Read package version
+        id: version
+        run: |
+          set -euo pipefail
+          VERSION=$(grep -m1 '^version:' pubspec.yaml | sed 's/^version:[[:space:]]*//' | tr -d '[:space:]')
+          if [ -z "$VERSION" ]; then
+            echo "::error file=pubspec.yaml::Could not read a 'version:' field from pubspec.yaml"
+            exit 1
+          fi
+          if ! printf '%s' "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error file=pubspec.yaml::Version '$VERSION' is not a plain X.Y.Z release version. Pre-release and build suffixes are not auto-released."
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Package version: $VERSION"
+
+      - name: Skip if the tag already exists
+        id: tagged
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          if git rev-parse -q --verify "refs/tags/v${VERSION}" >/dev/null; then
+            echo "Tag v${VERSION} already exists - nothing to release."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Skip if the version is already on pub.dev
+        id: published
+        if: steps.tagged.outputs.skip == 'false'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          CODE=$(curl -sS -o /dev/null -w '%{http_code}' \
+            "https://pub.dev/api/packages/lableb_flutter_sdk/versions/${VERSION}" || echo "000")
+          if [ "$CODE" = "200" ]; then
+            echo "Version ${VERSION} is already published on pub.dev - nothing to release."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "pub.dev returned HTTP ${CODE} for version ${VERSION} - proceeding."
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Require a CHANGELOG entry
+        if: steps.tagged.outputs.skip == 'false' && steps.published.outputs.skip == 'false'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          ESCAPED=$(printf '%s' "${VERSION}" | sed 's/\./\\./g')
+          if ! grep -qE "^#+[[:space:]]*\[?v?${ESCAPED}\]?([[:space:]]|\$)" CHANGELOG.md; then
+            echo "::error file=CHANGELOG.md::No heading found for version ${VERSION}. Add a '## ${VERSION}' section before releasing."
+            exit 1
+          fi
+          echo "Found CHANGELOG entry for ${VERSION}."
+
+      - name: Create and push tag
+        if: steps.tagged.outputs.skip == 'false' && steps.published.outputs.skip == 'false'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "v${VERSION}" -m "Release v${VERSION}"
+          git push origin "v${VERSION}"
+          echo "Pushed tag v${VERSION} - publish.yml takes it from here."

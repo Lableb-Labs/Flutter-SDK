@@ -5,11 +5,9 @@ import 'api_client.dart';
 /// rest of the SDK's endpoints (`api.lableb.com` / `sandbox-api.lableb.com`).
 class SettingsApiClient extends ApiClient {
   SettingsApiClient({
-    required String apiKey,
-    bool enableLogging = false,
+    required super.apiKey,
+    super.enableLogging,
   }) : super(
           baseUrl: 'https://platform-integration-service.lableb.com',
-          apiKey: apiKey,
-          enableLogging: enableLogging,
         );
 }

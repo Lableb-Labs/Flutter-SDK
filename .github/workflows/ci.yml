@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [master]
+  # Called by release.yml so a merge to master is verified before it is tagged.
+  workflow_call:
+
+jobs:
+  verify:
+    name: Analyze & test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      # Scoped to test/src on purpose. test/live_credentials_test.dart performs
+      # real network calls against Lableb hosts using blank credential constants
+      # and has no skip guard, so a bare `flutter test` would always fail here.
+      - name: Run tests
+        run: flutter test test/src

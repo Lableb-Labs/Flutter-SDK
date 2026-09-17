@@ -21,10 +21,10 @@ class RecommenderRequest {
   RecommenderRequest({
     this.userId,
     this.itemId,
-    int limit = 10,
+    this.limit = 10,
     this.filters,
     this.context,
-  }) : limit = limit;
+  });
 
   /// Converts the [RecommenderRequest] to query parameters or body.
   Map<String, dynamic> toJson() {
