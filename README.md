@@ -1,255 +1,434 @@
 # Lableb Flutter SDK
 
-A production-ready Flutter SDK for integrating with the Lableb platform. This SDK provides a clean, type-safe interface to all Lableb API endpoints including search, autocomplete, recommendations, indexing, and feedback.
+A Flutter SDK for the [Lableb](https://lableb.com) search platform. It provides
+typed access to search, autocomplete, recommendations, indexing, and feedback,
+plus a turnkey integration path for Zid merchant apps.
 
 ## Features
 
-✅ **Complete API Coverage**
-- Index/Data ingestion
-- Search with filtering, sorting, and pagination
-- Autocomplete suggestions
-- Recommendations
-- Feedback submission (search, autocomplete, recommender)
-
-✅ **Clean Architecture**
-- Domain layer with entities and abstract repositories
-- Data layer with models, requests, and responses
-- Proper separation of concerns
-- SOLID principles
-
-✅ **Production Ready**
-- Full null safety
-- Comprehensive error handling
-- Request/response logging (debug mode)
-- Timeout handling
-- Retry strategies
-- Type-safe models with JSON serialization
-
-✅ **Developer Experience**
-- Full documentation comments
-- Easy-to-use API
-- Comprehensive examples
-- Strong typing throughout
+- **Fluent, step-validated builders** for search, recommendations, and all
+  feedback endpoints — required fields are enforced by the type system.
+- **Zid / AppsBunches integration** via a single `LablebSDK.init()` call, including
+  sandbox routing, encrypted token storage, and merchant global settings.
+- **Pre-order support** — campaign, options, fields, and formatted sale price
+  attributes on search and autocomplete results.
+- **Drop-in recommendations widget**, page-route analytics, and cart event hooks.
+- **Typed error handling** with a single `LablebException` base class.
+- **Clean-architecture layering** — domain entities and abstract repositories over
+  a data layer of models, requests, and responses, wired through `get_it`.
+- Full null safety, configurable timeouts, and request/response logging.
 
 ## Installation
 
-Add this package to your `pubspec.yaml`:
-
 ```yaml
 dependencies:
-  lableb_flutter_sdk:
-    path: ../
+  lableb_flutter_sdk: ^1.0.0
 ```
-
-Then run:
 
 ```bash
 flutter pub get
 ```
 
-> Note: For publishable packages, replace the local `path` dependency with a hosted version once released.
-
-## Quick Start
-
-### 1. Initialize the SDK
-
 ```dart
 import 'package:lableb_flutter_sdk/lableb_flutter_sdk.dart';
-
-final sdk = LablebSDK(
-  baseUrl: 'https://api.lableb.com',
-  apiKeySearch: 'your-search-api-key',
-  apiKeyIndex: 'your-index-api-key',
-  projectId: 'your-project-id',
-  indexName: 'your-index-name',
-  enableLogging: true, // Optional: for debugging
-);
 ```
 
-### 2. Upload Documents
+## Getting started
+
+The SDK has two entry points. Pick the one that matches your integration.
+
+### Option A — `LablebSDK.init()` (preferred for merchant integrations)
+
+Zid and AppsBunches hand your app a configuration payload. Pass it straight
+through: the SDK derives the base URL, selects the sandbox when appropriate,
+persists the token in encrypted storage, and fetches the merchant's global
+settings.
 
 ```dart
-await sdk.index.uploadDocuments([
-  {
-    'id': 'item-1',
-    'title': 'Example Product',
-    'description': 'Product description',
-    'price': 99.99,
-  }
-]);
-```
-
-### 3. Perform Search
-
-```dart
-final result = await sdk.search.search(
-  query: 'product',
-  filters: {'category': 'electronics'},
-  sort: 'price asc',
-  page: 1,
-  pageSize: 10,
+await LablebSDK.init(
+  initialJson: {
+    'status': true,               // master switch; false disables the SDK
+    'app_key': 'your-app-key',    // required
+    'token': 'merchant-token',
+    'primary_color': '#FF6600',
+    'store_id': '56705',
+    'sandbox': false,
+  },
 );
 
-print('Found ${result.results.length} results');
-for (final item in result.results) {
-  print('${item.id}: ${item.data['title']}');
+if (LablebSDK.isEnabled) {
+  final sdk = LablebSDK.instance;
+  // ...
 }
 ```
 
-### 4. Get Autocomplete Suggestions
+`init` never throws. If `status` is `false` or `app_key` is empty, the SDK stays
+disabled and `LablebSDK.isEnabled` reports `false`. Reading
+`LablebSDK.instance` before a successful `init` throws a `StateError`, so gate on
+`isEnabled` when the payload is not under your control.
+
+### Option B — direct construction
+
+```dart
+final sdk = LablebSDK(
+  baseUrl: 'https://api.lableb.com',
+  apiKey: 'your-api-key',
+  indexName: 'index',        // defaults to 'index'
+  platformName: 'zid_56705', // optional; enables global settings fetch
+  enableLogging: true,
+);
+```
+
+Only `baseUrl` and `apiKey` are required. Supplying `platformName` triggers the
+same global-settings fetch that `init` performs.
+
+## Search
+
+```dart
+final result = await sdk
+    .searchRequest()
+    .forQuery('laptop')
+    .withFilters({'brand': 'Dell'})
+    .sortBy('price', direction: 'asc')
+    .paginate(page: 1, pageSize: 10)
+    .send();
+
+print('${result.totalResults} results in ${result.executionTime}ms');
+
+for (final item in result.results) {
+  print('${item.id}: ${item.data['title']} (score ${item.score})');
+}
+
+if (result.pagination.canGoNext) {
+  // fetch page 2
+}
+```
+
+`sortBy` is a convenience for a single field. For multi-field sorting use
+`withSort({'price': 'asc', 'rating': 'desc'})`. To target a non-default search
+handler configured on your Lableb dashboard, add `.withHandler('my-handler')`.
+
+`send()` returns a `SearchResult` with `results` (`List<SearchEntity>`),
+`pagination`, `totalResults`, and `executionTime`.
+
+## Autocomplete
 
 ```dart
 final suggestions = await sdk.autocomplete.getSuggestions(
-  query: 'prod',
+  query: 'lap',
   limit: 5,
 );
+
+for (final suggestion in suggestions) {
+  print('${suggestion.text} (${suggestion.score})');
+}
 ```
 
-### 5. Get Recommendations
+## Recommendations
 
 ```dart
-final recommendations = await sdk.recommender.getRecommendations(
-  limit: 10,
-  itemId: 'user-123',
-);
+final recommendations = await sdk
+    .recommendations()
+    .forItem('item-1')
+    .limit(10)
+    .withContext({'page': 'product_detail'})
+    .send();
+
+for (final rec in recommendations) {
+  print('${rec.id}: ${rec.reason}');
+}
 ```
 
-### 6. Submit Feedback
+Start the builder with `forItem(id)`, `fromUser(id)`, or
+`fromUserForItem(userId: ..., itemId: ...)` — at least one signal is required.
+
+When the merchant has the recommender disabled in the Lableb dashboard,
+`send()` returns an empty list instead of calling the API. Check
+`LablebSDK.hasRecommendation` if you need to hide the UI entirely.
+
+## Feedback
+
+Feedback is what trains ranking, so send it for every meaningful interaction.
+
+### Search feedback events (click / add to cart / purchase)
 
 ```dart
-await sdk.feedback.submitSearchFeedbackEvent(
-  SearchFeedbackEvent(
-    eventType: FeedbackEventType.click,
-    query: 'product',
-    itemId: 'item-1',
-    sessionId: 'session-123',
+await sdk
+    .searchFeedbackEvent()
+    .forCollection(project: 'wptest', collection: 'posts')
+    .forQuery('laptop')
+    .event(SearchFeedbackEventType.click)
+    .forItem(id: 'item-1', order: 1, price: 95.5)
+    .fromUser(id: 'user-123', sessionId: '1c4Hb23', country: 'DE')
+    .send();
+```
+
+`order` is the item's 1-based position in the result list. The available event
+types are `SearchFeedbackEventType.click`, `.addToCart`, and `.purchase`.
+Optional steps: `.withUrl(...)`, `.withToken(...)`, and a `handler` argument on
+`forCollection`.
+
+To inspect the payload without hitting the network — useful in tests — call
+`.build()` instead of `.send()`.
+
+### Autocomplete feedback
+
+```dart
+await sdk
+    .autocompleteFeedback()
+    .forQuery('lap')
+    .forSuggestion('laptop')
+    .value('clicked')
+    .fromUser(id: 'user-123')
+    .send();
+```
+
+### Recommender feedback
+
+```dart
+await sdk
+    .recommenderFeedback()
+    .forRecommendation('item-2')
+    .value('positive')
+    .fromUser(id: 'user-123')
+    .send();
+```
+
+### Legacy search feedback
+
+Prefer `searchFeedbackEvent()`. This endpoint remains for existing integrations:
+
+```dart
+await sdk
+    .legacySearchFeedback()
+    .forQuery('laptop')
+    .forResult('item-1')
+    .value('positive')
+    .send();
+```
+
+## Indexing
+
+Indexing takes `IndexEntity` objects, not raw maps.
+
+```dart
+await sdk.index.indexItem(
+  IndexEntity(
+    id: 'item-1',
+    data: {
+      'title': 'Example Product',
+      'description': 'Product description',
+      'price': 99.99,
+    },
   ),
 );
 
-await sdk.feedback.submitAutocompleteFeedbackEvent(
-  AutocompleteFeedbackEvent(
-    eventType: FeedbackEventType.click,
-    query: 'prod',
-    itemId: 'suggestion-1',
-  ),
+await sdk.index.indexBatch([
+  IndexEntity(id: 'item-2', data: {'title': 'Second Product'}),
+  IndexEntity(id: 'item-3', data: {'title': 'Third Product'}),
+]);
+
+await sdk.index.updateItem(
+  IndexEntity(id: 'item-1', data: {'price': 89.99}),
 );
 
-await sdk.feedback.submitRecommendFeedbackEvent(
-  RecommendFeedbackEvent(
-    eventType: FeedbackEventType.addToCart,
-    sourceId: 'item-1',
-    targetId: 'item-2',
-  ),
+await sdk.index.deleteItem('item-1');
+```
+
+## Merchant features
+
+### Global settings
+
+Merchant-level toggles are fetched once at initialization and exposed as static
+getters. They default to `false` when the fetch has not happened or failed.
+
+```dart
+LablebSDK.hasRecommendation;      // recommender feature enabled
+LablebSDK.showOutOfStockProducts; // include out-of-stock products in results
+LablebSDK.disableQuantityFilter;  // omit the quantity_from filter
+```
+
+### Recommendations widget
+
+A horizontally scrolling product strip that resolves its own data and renders
+nothing when recommendations are unavailable:
+
+```dart
+LablebSDK.recommendationsWidget(productId: 'item-1')
+```
+
+### Page route tracking
+
+```dart
+await LablebSDK.trackPageRoute(pageName: 'product_detail');
+```
+
+### Cart event handlers
+
+Let Lableb-rendered widgets drive your app's cart:
+
+```dart
+await LablebSDK.registerCartEventHandlers(
+  onAddToCart: (productId, quantity) {
+    // add to your cart
+  },
+  onRemoveFromCart: (productId) {
+    // remove from your cart
+  },
 );
 ```
 
-## Error Handling
+## Pre-order fields
 
-The SDK provides comprehensive error handling with custom exception types:
+Search and autocomplete results carry Zid pre-order attributes:
+
+```dart
+for (final item in result.results) {
+  if (item.canBePreordered && item.preorderSlotsAvailable) {
+    final campaign = item.effectivePreorderCampaign ?? item.preorderCampaign;
+    print('${campaign?.badgeText} — ends ${campaign?.endDate}');
+  }
+
+  if (item.hasOptions) { /* show the variant picker */ }
+  if (item.formattedSalePrice != null) { /* show the sale price */ }
+}
+```
+
+`PreorderCampaign` exposes `id`, `name`, `badgeText`, `showCountdown`,
+`releaseNote`, `stockBehavior`, `startDate`, and `endDate`.
+
+## Error handling
+
+Every SDK error extends `LablebException`, which carries `message`,
+`statusCode`, and `details`. Catch the specific types first:
 
 ```dart
 try {
-  await sdk.search.search(query: 'example');
+  await sdk.searchRequest().forQuery('laptop').send();
+} on UnauthorizedException catch (e) {
+  print('Check your API key: ${e.message}');
+} on ForbiddenException catch (e) {
+  print('Forbidden: ${e.message}');
+} on NotFoundException catch (e) {
+  print('Not found: ${e.message}');
+} on ValidationException catch (e) {
+  print('Bad request: ${e.message} ${e.details}');
+} on TimeoutException catch (e) {
+  print('Timed out: ${e.message}');
 } on NetworkException catch (e) {
   print('Network error: ${e.message}');
-} on UnauthorizedException catch (e) {
-  print('Unauthorized: ${e.message}');
-} on ValidationException catch (e) {
-  print('Validation error: ${e.message}');
 } on ServerException catch (e) {
-  print('Server error: ${e.message}');
-} on TimeoutException catch (e) {
-  print('Request timed out: ${e.message}');
+  print('Server error ${e.statusCode}: ${e.message}');
 } on LablebException catch (e) {
   print('Lableb error: ${e.message}');
 }
 ```
 
-## Advanced Configuration
+> `TimeoutException` shadows the `dart:async` class of the same name. If you
+> import both libraries, alias one of them.
 
-### Custom Timeouts
+## Advanced configuration
+
+### Timeouts
 
 ```dart
 final sdk = LablebSDK(
   baseUrl: 'https://api.lableb.com',
-  apiKeySearch: 'your-search-api-key',
-  apiKeyIndex: 'your-index-api-key',
-  projectId: 'your-project-id',
-  indexName: 'your-index-name',
+  apiKey: 'your-api-key',
   connectTimeout: const Duration(seconds: 60),
   receiveTimeout: const Duration(seconds: 60),
   sendTimeout: const Duration(seconds: 60),
 );
 ```
 
-### Default Headers
+### Authentication style and custom headers
 
 ```dart
 final sdk = LablebSDK(
   baseUrl: 'https://api.lableb.com',
-  apiKeySearch: 'your-search-api-key',
-  apiKeyIndex: 'your-index-api-key',
-  projectId: 'your-project-id',
-  indexName: 'your-index-name',
-  defaultHeaders: {
-    'X-Custom-Header': 'value',
-  },
+  apiKey: 'your-api-key',
+  authType: AuthType.custom,        // bearer (default), apiKey, or custom
+  customHeaderName: 'X-Lableb-Key',
+  defaultHeaders: {'X-Tenant': 'acme'},
 );
+```
+
+### Service locator
+
+All services are registered in a `get_it` container exported as `locator`.
+Resolve a repository or builder directly when you need to bypass the `LablebSDK`
+facade — useful for injecting fakes in tests:
+
+```dart
+final repository = locator<SearchRepository>();
 ```
 
 ## Architecture
 
-The SDK follows Clean Architecture principles:
-
 ```
 lib/
-├── src/
-│   ├── api/              # API client and interceptors
-│   ├── core/             # Core utilities (pagination, etc.)
-│   ├── data/             # Data layer (models, repositories, requests, responses)
-│   ├── domain/           # Domain layer (entities, abstract repositories)
-│   ├── exceptions/       # Custom exceptions
-│   └── sdk_initializer.dart
-└── lableb_flutter_sdk.dart
+├── lableb_flutter_sdk.dart
+└── src/
+    ├── analytics/        # Page-route tracking builder and service
+    ├── api/              # Dio client, interceptors, settings client
+    ├── cart/             # Cart event bus and handler builder
+    ├── core/             # Shared models (pagination)
+    ├── data/             # Models, repository impls, requests, responses
+    ├── di/               # get_it locator and SDK options
+    ├── domain/           # Entities and abstract repositories
+    ├── exceptions/       # LablebException hierarchy
+    ├── feedback/         # Feedback builders and extensions
+    ├── recommender/      # Recommendations builder and extension
+    ├── search/           # Search request builder and extension
+    ├── ui/               # LablebRecommendationWidget
+    ├── zid/              # Zid config and encrypted token storage
+    └── sdk_initializer.dart
 ```
 
-## API Reference
+## API reference
 
-### IndexRepository
+### Builder entry points (extensions on `LablebSDK`)
 
-- `indexItem(IndexEntity item)` - Index a single item
-- `indexBatch(List<IndexEntity> items)` - Index multiple items
-- `updateItem(IndexEntity item)` - Update an existing item
-- `deleteItem(String id)` - Delete an item
+| Method | Returns |
+| --- | --- |
+| `searchRequest()` | `SearchResult` |
+| `recommendations()` | `List<RecommenderEntity>` |
+| `searchFeedbackEvent()` | `void` (or `SearchFeedbackEventPayload` via `build()`) |
+| `autocompleteFeedback()` | `void` |
+| `recommenderFeedback()` | `void` |
+| `legacySearchFeedback()` | `void` |
 
-### SearchRepository
+### Static members on `LablebSDK`
 
-- `search({required String query, ...})` - Perform a search with optional filters, sorting, and pagination
+`init()`, `instance`, `isEnabled`, `hasRecommendation`, `showOutOfStockProducts`,
+`disableQuantityFilter`, `trackPageRoute()`, `registerCartEventHandlers()`,
+`recommendationsWidget()`.
 
-### AutocompleteRepository
+### Repositories
 
-- `getSuggestions({required String query, ...})` - Get autocomplete suggestions
+- `IndexRepository` — `indexItem`, `indexBatch`, `updateItem`, `deleteItem`
+- `AutocompleteRepository` — `getSuggestions`
+- `SearchRepository` — `search` *(deprecated: use `searchRequest()`)*
+- `RecommenderRepository` — `getRecommendations` *(deprecated: use `recommendations()`)*
+- `FeedbackRepository` — `submitSearchFeedbackEvent`, `submitSearchFeedback`,
+  `submitAutocompleteFeedback`, `submitRecommenderFeedback`
+  *(all deprecated: use the feedback builders)*
+- `SettingsRepository` — `getSettings`
 
-### RecommenderRepository
-
-- `getRecommendations({String? userId, String? itemId, ...})` - Get recommendations
-
-### FeedbackRepository
-
-- `submitSearchFeedbackEvent(...)` - Submit search feedback events (click/add_to_cart/purchase)
-- `submitSearchFeedback(...)` - Legacy search feedback (deprecated)
-- `submitAutocompleteFeedback(...)` - Submit feedback for autocomplete
-- `submitRecommenderFeedback(...)` - Submit feedback for recommendations
+The deprecated repository methods still work and are what the builders call
+internally. They are marked deprecated because the builders validate required
+fields at compile time; expect them to be removed in a future major version.
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome. Please open an issue or submit a pull request at
+[Lableb-Labs/Flutter-SDK](https://github.com/Lableb-Labs/Flutter-SDK).
 
 ## License
 
-This project is licensed under the MIT License.
+MIT. See [LICENSE](LICENSE).
 
 ## Support
 
-For issues, questions, or feature requests, please open an issue on GitHub.
-
+For issues, questions, or feature requests, open an issue on
+[GitHub](https://github.com/Lableb-Labs/Flutter-SDK/issues).
