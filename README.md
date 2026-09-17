@@ -62,10 +62,26 @@ if (LablebSDK.isEnabled) {
 }
 ```
 
-`init` never throws. If `status` is `false` or `app_key` is empty, the SDK stays
-disabled and `LablebSDK.isEnabled` reports `false`. Reading
-`LablebSDK.instance` before a successful `init` throws a `StateError`, so gate on
-`isEnabled` when the payload is not under your control.
+If `status` is `false` or `app_key` is missing or empty, the SDK stays disabled
+and `LablebSDK.isEnabled` reports `false` — no exception. Token-storage and
+settings-fetch failures are swallowed too, so a device without secure storage or
+without connectivity still initializes.
+
+Field *types*, however, are not defensive: `status` and `sandbox` must be real
+booleans and `app_key` a real string. A JSON payload that sends `"status":
+"true"` or a numeric `app_key` throws a `TypeError`. If the payload comes from a
+source you do not control, coerce it first or wrap the call:
+
+```dart
+try {
+  await LablebSDK.init(initialJson: payload);
+} catch (_) {
+  // treat as disabled
+}
+```
+
+Reading `LablebSDK.instance` before a successful `init` throws a `StateError`, so
+gate on `isEnabled`.
 
 ### Option B — direct construction
 
@@ -79,8 +95,15 @@ final sdk = LablebSDK(
 );
 ```
 
-Only `baseUrl` and `apiKey` are required. Supplying `platformName` triggers the
-same global-settings fetch that `init` performs.
+Only `baseUrl` and `apiKey` are required.
+
+Supplying `platformName` starts the merchant global-settings fetch, but the
+constructor **does not wait for it** — it is fire-and-forget, because a Dart
+constructor cannot be `async`. Until it resolves, every flag in
+[Global settings](#global-settings) reads `false`. `LablebSDK.init()` awaits the
+same fetch, which is why it is the better choice when those flags gate your UI.
+If you need the flags right after direct construction, poll
+`LablebSDK.hasRecommendation` or defer the dependent render by a frame.
 
 ## Search
 
@@ -142,9 +165,17 @@ for (final rec in recommendations) {
 Start the builder with `forItem(id)`, `fromUser(id)`, or
 `fromUserForItem(userId: ..., itemId: ...)` — at least one signal is required.
 
-When the merchant has the recommender disabled in the Lableb dashboard,
-`send()` returns an empty list instead of calling the API. Check
-`LablebSDK.hasRecommendation` if you need to hide the UI entirely.
+> **Recommendations are gated on `LablebSDK.hasRecommendation`.** When that flag
+> is `false`, `send()` returns an empty list immediately and never calls the API.
+> The flag is `false` not only when the merchant has the recommender disabled in
+> the Lableb dashboard, but also whenever global settings have not been fetched —
+> which is the case if you constructed the SDK directly without `platformName`,
+> or if you call `send()` before the fetch resolves. Silently empty results here
+> almost always mean the flag, not the query.
+
+Check `LablebSDK.hasRecommendation` before rendering if you need to hide the UI
+entirely. The same gate applies to `LablebSDK.recommendationsWidget()`, which
+renders nothing rather than reporting an error.
 
 ## Feedback
 
@@ -324,6 +355,10 @@ try {
 }
 ```
 
+The final `on LablebException` clause is not decorative: HTTP status codes
+outside 400/401/403/404/5xx, and cancelled requests, surface as
+`GeneralException`, which only that clause catches.
+
 > `TimeoutException` shadows the `dart:async` class of the same name. If you
 > import both libraries, alias one of them.
 
@@ -389,14 +424,17 @@ lib/
 
 ### Builder entry points (extensions on `LablebSDK`)
 
-| Method | Returns |
+Each entry point returns a builder; the type below is what its terminal
+`.send()` resolves to.
+
+| Entry point | `.send()` resolves to |
 | --- | --- |
-| `searchRequest()` | `SearchResult` |
-| `recommendations()` | `List<RecommenderEntity>` |
-| `searchFeedbackEvent()` | `void` (or `SearchFeedbackEventPayload` via `build()`) |
-| `autocompleteFeedback()` | `void` |
-| `recommenderFeedback()` | `void` |
-| `legacySearchFeedback()` | `void` |
+| `searchRequest()` | `Future<SearchResult>` |
+| `recommendations()` | `Future<List<RecommenderEntity>>` |
+| `searchFeedbackEvent()` | `Future<void>` (or `SearchFeedbackEventPayload` via `.build()`) |
+| `autocompleteFeedback()` | `Future<void>` |
+| `recommenderFeedback()` | `Future<void>` |
+| `legacySearchFeedback()` | `Future<void>` |
 
 ### Static members on `LablebSDK`
 
