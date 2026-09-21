@@ -1,0 +1,17 @@
+# A .pubignore at the package root replaces .gitignore for packaging, so the
+# entries that matter for the published archive are repeated here.
+
+# Build and tooling output
+.dart_tool/
+build/
+coverage/
+.idea/
+*.iml
+
+# Not useful to consumers of the published package
+.github/
+test/
+PROJECT_STRUCTURE.md
+
+# Library packages should not ship a lockfile; consumers resolve their own.
+pubspec.lock

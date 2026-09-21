@@ -1,45 +1,49 @@
 import '../../domain/repositories/feedback_repository.dart';
 
-/// Request model for the **Search Feedback Event** API.
+/// Request model for the **Autocomplete Feedback Event** API.
 ///
 /// Per Lableb's REST API docs (docs.lableb.com/docs/cse/rest/feedback/
-/// search-feedback), the endpoint is
-/// `POST /v2/projects/{platformName}/indices/{indexName}/search/{handler}/feedback/events`,
+/// autocomplete-feedback), the endpoint is
+/// `POST /v2/projects/{platformName}/indices/{indexName}/autocomplete/{handler}/feedback/events`,
 /// it authenticates with an `apikey` query parameter that must carry `Search`
 /// permission, and the events themselves travel as a **JSON array body** — not
 /// as query string parameters.
-class SearchFeedbackEventRequest {
+///
+/// The suggestion the user took is reported as [itemId] plus [itemOrder]; the
+/// kind of interaction is [eventType]. There is no free-text "feedback value"
+/// in the documented payload.
+class AutocompleteFeedbackEventRequest {
   /// Project name on the Lableb dashboard (the SDK's `platformName`).
   final String platformName;
 
   /// Index name (the SDK's `indexName`, `index` by default).
   final String indexName;
 
-  /// Search handler name (defaults to `default`).
+  /// Autocomplete handler name (defaults to `default`).
   final String handler;
 
-  /// The search query.
+  /// The query the user typed.
   final String query;
 
   /// Event type (purchase/add_to_cart/click).
   final SearchFeedbackEventType eventType;
 
-  /// The id of the clicked result.
+  /// The id of the suggestion the user took.
   final String itemId;
 
-  /// The index of the clicked result starting from 1.
+  /// The index of the taken suggestion starting from 1.
   final int itemOrder;
 
-  /// The price of the item.
+  /// The individual unit price of the item.
   final double? itemPrice;
 
-  /// The number of units selected for the clicked item.
+  /// The number of units selected for the item.
   final int? itemQuantity;
 
   /// Unique identifier for the user's current shopping session.
   final String? cartId;
 
-  /// The url of the clicked result.
+  /// The url of the taken suggestion.
   final String? url;
 
   /// A unique identifier for a user session.
@@ -57,7 +61,7 @@ class SearchFeedbackEventRequest {
   /// Originating platform (`web`, `mobile`, `ios`, ...).
   final String? requestSource;
 
-  SearchFeedbackEventRequest({
+  AutocompleteFeedbackEventRequest({
     required this.platformName,
     required this.indexName,
     this.handler = 'default',
@@ -78,7 +82,7 @@ class SearchFeedbackEventRequest {
 
   /// Builds the request path.
   String buildPath() {
-    return '/v2/projects/$platformName/indices/$indexName/search/$handler'
+    return '/v2/projects/$platformName/indices/$indexName/autocomplete/$handler'
         '/feedback/events';
   }
 

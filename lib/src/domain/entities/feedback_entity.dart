@@ -2,6 +2,7 @@
 /// 
 /// This entity represents feedback submitted for search, autocomplete,
 /// or recommendation results.
+@Deprecated('Models a feedback wire format the Lableb API does not accept; scheduled for removal.')
 class FeedbackEntity {
   /// Type of feedback (search, autocomplete, recommender).
   final String feedbackType;

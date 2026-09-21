@@ -1,8 +1,10 @@
 import '../../api/api_client.dart';
+import '../../di/locator.dart';
+import '../../exceptions/exceptions.dart';
 import '../../domain/repositories/feedback_repository.dart';
-import '../requests/feedback_request.dart';
-import '../responses/feedback_response.dart';
 import '../requests/search_feedback_event_request.dart';
+import '../requests/autocomplete_feedback_event_request.dart';
+import '../requests/recommend_feedback_event_request.dart';
 import '../responses/feedback_event_response.dart';
 
 /// Implementation of [FeedbackRepository] for feedback operations.
@@ -16,43 +18,54 @@ class FeedbackRepositoryImpl implements FeedbackRepository {
 
   @override
   Future<void> submitSearchFeedbackEvent({
-    required String project,
-    required String collection,
     String handler = 'default',
     required String query,
     required SearchFeedbackEventType eventType,
     required String itemId,
     required int itemOrder,
     double? itemPrice,
+    int? itemQuantity,
+    String? cartId,
     String? url,
     String? sessionId,
     String? userId,
     String? userIp,
     String? userCountry,
-    String? token,
+    String? requestSource,
   }) async {
+    final options = locator<LablebSdkOptions>();
+    final platformName = options.platformName;
+    if (platformName == null || platformName.trim().isEmpty) {
+      throw ValidationException(
+        'platformName is required to submit search feedback. Pass '
+        'platformName when constructing LablebSDK (see '
+        'docs.lableb.com/docs/cse/rest/feedback/search-feedback).',
+      );
+    }
+
     final request = SearchFeedbackEventRequest(
-      project: project,
-      collection: collection,
+      platformName: platformName,
+      indexName: options.indexName,
       handler: handler,
       query: query,
       eventType: eventType,
       itemId: itemId,
       itemOrder: itemOrder,
       itemPrice: itemPrice,
+      itemQuantity: itemQuantity,
+      cartId: cartId,
       url: url,
       sessionId: sessionId,
       userId: userId,
       userIp: userIp,
       userCountry: userCountry,
-      // If token isn't supplied, default to the SDK API key since docs show
-      // `token=...` in query string.
-      token: token ?? _apiClient.apiKey,
+      requestSource: requestSource,
     );
 
     final response = await _apiClient.post(
       request.buildPath(),
-      queryParameters: request.toQueryParameters(),
+      data: request.toBody(),
+      queryParameters: {'apikey': _apiClient.apiKey},
     );
 
     // Response payload shape differs from other feedback endpoints.
@@ -85,121 +98,157 @@ class FeedbackRepositoryImpl implements FeedbackRepository {
       final userId = metadata?['user_id'] as String?;
       final userIp = metadata?['user_ip'] as String?;
       final userCountry = metadata?['user_country'] as String?;
-      final project = metadata?['project'] as String?;
-      final collection = metadata?['collection'] as String?;
       final handler = metadata?['handler'] as String? ?? 'default';
 
-      if (project != null && collection != null) {
-        await submitSearchFeedbackEvent(
-          project: project,
-          collection: collection,
-          handler: handler,
-          query: query,
-          eventType: SearchFeedbackEventType.click,
-          itemId: resultId,
-          itemOrder: itemOrder,
-          itemPrice: itemPrice,
-          url: url,
-          sessionId: sessionId,
-          userId: userId,
-          userIp: userIp,
-          userCountry: userCountry,
-        );
-        return;
-      }
-
-      final request = FeedbackRequest(
-        feedbackType: 'search',
+      // The former `/feedback/search` fallback is gone: the documented API has
+      // a single search-feedback endpoint, so this always delegates to it.
+      await submitSearchFeedbackEvent(
+        handler: handler,
         query: query,
-        resultId: resultId,
-        feedbackValue: feedbackValue,
-        metadata: metadata,
+        eventType: SearchFeedbackEventType.click,
+        itemId: resultId,
+        itemOrder: itemOrder,
+        itemPrice: itemPrice,
+        url: url,
+        sessionId: sessionId,
+        userId: userId,
+        userIp: userIp,
+        userCountry: userCountry,
       );
-
-      final response = await _apiClient.post(
-        '/feedback/search',
-        data: request.toJson(),
-      );
-
-      final feedbackResponse = FeedbackResponse.fromJson(
-        response.data as Map<String, dynamic>,
-      );
-
-      if (!feedbackResponse.success) {
-        throw Exception(feedbackResponse.message);
-      }
     } catch (e) {
       rethrow;
     }
   }
 
   @override
-  Future<void> submitAutocompleteFeedback({
+  Future<void> submitAutocompleteFeedbackEvent({
+    String handler = 'default',
     required String query,
-    required String suggestion,
-    required String feedbackValue,
+    required SearchFeedbackEventType eventType,
+    required String itemId,
+    required int itemOrder,
+    double? itemPrice,
+    int? itemQuantity,
+    String? cartId,
+    String? url,
+    String? sessionId,
     String? userId,
-    Map<String, dynamic>? metadata,
+    String? userIp,
+    String? userCountry,
+    String? requestSource,
   }) async {
-    try {
-      final request = FeedbackRequest(
-        feedbackType: 'autocomplete',
-        query: query,
-        resultId: suggestion,
-        feedbackValue: feedbackValue,
-        metadata: metadata,
-        userId: userId,
+    final options = locator<LablebSdkOptions>();
+    final platformName = options.platformName;
+    if (platformName == null || platformName.trim().isEmpty) {
+      throw ValidationException(
+        'platformName is required to submit autocomplete feedback. Pass '
+        'platformName when constructing LablebSDK (see '
+        'docs.lableb.com/docs/cse/rest/feedback/autocomplete-feedback).',
       );
+    }
 
-      final response = await _apiClient.post(
-        '/feedback/autocomplete',
-        data: request.toJson(),
+    final request = AutocompleteFeedbackEventRequest(
+      platformName: platformName,
+      indexName: options.indexName,
+      handler: handler,
+      query: query,
+      eventType: eventType,
+      itemId: itemId,
+      itemOrder: itemOrder,
+      itemPrice: itemPrice,
+      itemQuantity: itemQuantity,
+      cartId: cartId,
+      url: url,
+      sessionId: sessionId,
+      userId: userId,
+      userIp: userIp,
+      userCountry: userCountry,
+      requestSource: requestSource,
+    );
+
+    final response = await _apiClient.post(
+      request.buildPath(),
+      data: request.toBody(),
+      queryParameters: {'apikey': _apiClient.apiKey},
+    );
+
+    final feedbackEventResponse = FeedbackEventResponse.fromJson(
+      response.data as Map<String, dynamic>,
+    );
+
+    if (!feedbackEventResponse.isSuccess) {
+      throw Exception(
+        'Feedback event failed with code ${feedbackEventResponse.code}',
       );
-
-      final feedbackResponse = FeedbackResponse.fromJson(
-        response.data as Map<String, dynamic>,
-      );
-
-      if (!feedbackResponse.success) {
-        throw Exception(feedbackResponse.message);
-      }
-    } catch (e) {
-      rethrow;
     }
   }
 
   @override
-  Future<void> submitRecommenderFeedback({
-    required String recommendationId,
-    required String feedbackValue,
+  Future<void> submitRecommendFeedbackEvent({
+    String handler = 'default',
+    required String sourceId,
+    required String targetId,
+    SearchFeedbackEventType? eventType,
+    String? sourceTitle,
+    String? sourceUrl,
+    String? targetTitle,
+    String? targetUrl,
+    int? itemOrder,
+    double? itemPrice,
+    int? itemQuantity,
+    String? cartId,
+    String? sessionId,
     String? userId,
-    Map<String, dynamic>? metadata,
+    String? userIp,
+    String? userCountry,
+    String? requestSource,
   }) async {
-    try {
-      final request = FeedbackRequest(
-        feedbackType: 'recommender',
-        query: '', // Not required for recommender feedback
-        resultId: recommendationId,
-        feedbackValue: feedbackValue,
-        metadata: metadata,
-        userId: userId,
+    final options = locator<LablebSdkOptions>();
+    final platformName = options.platformName;
+    if (platformName == null || platformName.trim().isEmpty) {
+      throw ValidationException(
+        'platformName is required to submit recommendation feedback. Pass '
+        'platformName when constructing LablebSDK (see '
+        'docs.lableb.com/docs/cse/rest/feedback/recommendation-feedback).',
       );
+    }
 
-      final response = await _apiClient.post(
-        '/feedback/recommender',
-        data: request.toJson(),
+    final request = RecommendFeedbackEventRequest(
+      platformName: platformName,
+      indexName: options.indexName,
+      handler: handler,
+      sourceId: sourceId,
+      targetId: targetId,
+      eventType: eventType,
+      sourceTitle: sourceTitle,
+      sourceUrl: sourceUrl,
+      targetTitle: targetTitle,
+      targetUrl: targetUrl,
+      itemOrder: itemOrder,
+      itemPrice: itemPrice,
+      itemQuantity: itemQuantity,
+      cartId: cartId,
+      sessionId: sessionId,
+      userId: userId,
+      userIp: userIp,
+      userCountry: userCountry,
+      requestSource: requestSource,
+    );
+
+    final response = await _apiClient.post(
+      request.buildPath(),
+      data: request.toBody(),
+      queryParameters: {'apikey': _apiClient.apiKey},
+    );
+
+    final feedbackEventResponse = FeedbackEventResponse.fromJson(
+      response.data as Map<String, dynamic>,
+    );
+
+    if (!feedbackEventResponse.isSuccess) {
+      throw Exception(
+        'Feedback event failed with code ${feedbackEventResponse.code}',
       );
-
-      final feedbackResponse = FeedbackResponse.fromJson(
-        response.data as Map<String, dynamic>,
-      );
-
-      if (!feedbackResponse.success) {
-        throw Exception(feedbackResponse.message);
-      }
-    } catch (e) {
-      rethrow;
     }
   }
 }
-

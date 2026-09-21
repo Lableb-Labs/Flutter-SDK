@@ -28,10 +28,10 @@ abstract class LablebException implements Exception {
 /// and other network-related issues.
 class NetworkException extends LablebException {
   NetworkException(
-    String message, {
-    int? statusCode,
-    Map<String, dynamic>? details,
-  }) : super(message, statusCode: statusCode, details: details);
+    super.message, {
+    super.statusCode,
+    super.details,
+  });
 
   @override
   String toString() => 'NetworkException: $message';
@@ -43,10 +43,10 @@ class NetworkException extends LablebException {
 /// the configured timeout period.
 class TimeoutException extends LablebException {
   TimeoutException(
-    String message, {
-    int? statusCode,
-    Map<String, dynamic>? details,
-  }) : super(message, statusCode: statusCode, details: details);
+    super.message, {
+    super.statusCode,
+    super.details,
+  });
 
   @override
   String toString() => 'TimeoutException: $message';
@@ -60,10 +60,10 @@ class TimeoutException extends LablebException {
 /// - User doesn't have permission to access the resource
 class UnauthorizedException extends LablebException {
   UnauthorizedException(
-    String message, {
+    super.message, {
     int? statusCode,
-    Map<String, dynamic>? details,
-  }) : super(message, statusCode: statusCode ?? 401, details: details);
+    super.details,
+  }) : super(statusCode: statusCode ?? 401);
 
   @override
   String toString() => 'UnauthorizedException: $message';
@@ -75,10 +75,10 @@ class UnauthorizedException extends LablebException {
 /// have permission to perform the requested action.
 class ForbiddenException extends LablebException {
   ForbiddenException(
-    String message, {
+    super.message, {
     int? statusCode,
-    Map<String, dynamic>? details,
-  }) : super(message, statusCode: statusCode ?? 403, details: details);
+    super.details,
+  }) : super(statusCode: statusCode ?? 403);
 
   @override
   String toString() => 'ForbiddenException: $message';
@@ -90,10 +90,10 @@ class ForbiddenException extends LablebException {
 /// doesn't exist.
 class NotFoundException extends LablebException {
   NotFoundException(
-    String message, {
+    super.message, {
     int? statusCode,
-    Map<String, dynamic>? details,
-  }) : super(message, statusCode: statusCode ?? 404, details: details);
+    super.details,
+  }) : super(statusCode: statusCode ?? 404);
 
   @override
   String toString() => 'NotFoundException: $message';
@@ -105,10 +105,10 @@ class NotFoundException extends LablebException {
 /// don't meet the API requirements.
 class ValidationException extends LablebException {
   ValidationException(
-    String message, {
+    super.message, {
     int? statusCode,
-    Map<String, dynamic>? details,
-  }) : super(message, statusCode: statusCode ?? 400, details: details);
+    super.details,
+  }) : super(statusCode: statusCode ?? 400);
 
   @override
   String toString() => 'ValidationException: $message';
@@ -119,10 +119,10 @@ class ValidationException extends LablebException {
 /// This indicates an issue on the server side, not with the client request.
 class ServerException extends LablebException {
   ServerException(
-    String message, {
+    super.message, {
     int? statusCode,
-    Map<String, dynamic>? details,
-  }) : super(message, statusCode: statusCode ?? 500, details: details);
+    super.details,
+  }) : super(statusCode: statusCode ?? 500);
 
   @override
   String toString() => 'ServerException: $message';
@@ -131,10 +131,10 @@ class ServerException extends LablebException {
 /// Exception thrown for any other unexpected errors.
 class GeneralException extends LablebException {
   GeneralException(
-    String message, {
-    int? statusCode,
-    Map<String, dynamic>? details,
-  }) : super(message, statusCode: statusCode, details: details);
+    super.message, {
+    super.statusCode,
+    super.details,
+  });
 
   @override
   String toString() => 'GeneralException: $message';

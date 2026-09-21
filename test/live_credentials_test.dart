@@ -6,6 +6,9 @@
 //
 // Credentials are intentionally left blank in version control.
 //
+// The prints below are this harness's report, read by hand when it is run.
+// ignore_for_file: avoid_print
+//
 // Confirms the two-host split and full corrected wire format:
 //   - Settings:            platform-integration-service.lableb.com
 //                           GET /v2/projects/{platformName}/settings

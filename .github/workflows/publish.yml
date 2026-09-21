@@ -1,0 +1,24 @@
+name: Publish to pub.dev
+
+# pub.dev only accepts automated publishes from workflows triggered by a tag
+# push. This glob must stay in sync with the tag pattern registered at
+# https://pub.dev/packages/lableb_flutter_sdk/admin (pattern: v{{version}}).
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+jobs:
+  publish:
+    permissions:
+      id-token: write # Required for authentication to pub.dev using OIDC.
+    # Installs Dart (for the OIDC token) and Flutter (whose `dart` performs the
+    # publish), runs `dart pub get`, then `dart pub publish --dry-run` before
+    # the real `dart pub publish -f`.
+    uses: dart-lang/setup-dart/.github/workflows/publish.yml@v1
+    # Optional hardening: create a `pub.dev` GitHub environment, tick
+    # "Require GitHub Actions environment" on the pub.dev admin page, and
+    # uncomment the two lines below. The environment is baked into the OIDC
+    # token, so it cannot be bypassed by editing this file.
+    # with:
+    #   environment: pub.dev

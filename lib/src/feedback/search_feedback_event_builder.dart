@@ -3,16 +3,10 @@ import 'package:get_it/get_it.dart';
 import '../domain/repositories/feedback_repository.dart';
 
 /// Entry point step for building and sending a Search Feedback Event.
+///
+/// The project and index segments of the endpoint come from the `platformName`
+/// and `indexName` given to `LablebSDK`, so there is nothing to supply here.
 abstract interface class SearchFeedbackEventBuilderStart {
-  SearchFeedbackEventBuilderQuery forCollection({
-    required String project,
-    required String collection,
-    String handler,
-  });
-}
-
-/// Step requiring the search query.
-abstract interface class SearchFeedbackEventBuilderQuery {
   SearchFeedbackEventBuilderEvent forQuery(String query);
 }
 
@@ -27,12 +21,22 @@ abstract interface class SearchFeedbackEventBuilderItem {
     required String id,
     required int order,
     double? price,
+    int? quantity,
   });
 }
 
 /// Final step: optional enrichment + terminal send/build.
 abstract interface class SearchFeedbackEventBuilderReady {
+  /// Overrides the search handler (defaults to `default`).
+  SearchFeedbackEventBuilderReady withHandler(String handler);
+
   SearchFeedbackEventBuilderReady withUrl(String url);
+
+  /// Ties this event to the user's current shopping session.
+  SearchFeedbackEventBuilderReady withCart(String cartId);
+
+  /// Records the originating platform (`web`, `mobile`, `ios`, ...).
+  SearchFeedbackEventBuilderReady withRequestSource(String source);
 
   SearchFeedbackEventBuilderReady fromUser({
     String? id,
@@ -40,8 +44,6 @@ abstract interface class SearchFeedbackEventBuilderReady {
     String? ip,
     String? country,
   });
-
-  SearchFeedbackEventBuilderReady withToken(String token);
 
   /// Sends the event through the SDK repository resolved from [locator].
   Future<void> send();
@@ -54,36 +56,36 @@ abstract interface class SearchFeedbackEventBuilderReady {
 
 /// Immutable payload produced by the builder.
 class SearchFeedbackEventPayload {
-  final String project;
-  final String collection;
   final String handler;
   final String query;
   final SearchFeedbackEventType eventType;
   final String itemId;
   final int itemOrder;
   final double? itemPrice;
+  final int? itemQuantity;
+  final String? cartId;
   final String? url;
   final String? sessionId;
   final String? userId;
   final String? userIp;
   final String? userCountry;
-  final String? token;
+  final String? requestSource;
 
   const SearchFeedbackEventPayload({
-    required this.project,
-    required this.collection,
     required this.handler,
     required this.query,
     required this.eventType,
     required this.itemId,
     required this.itemOrder,
     this.itemPrice,
+    this.itemQuantity,
+    this.cartId,
     this.url,
     this.sessionId,
     this.userId,
     this.userIp,
     this.userCountry,
-    this.token,
+    this.requestSource,
   });
 }
 
@@ -94,40 +96,24 @@ class SearchFeedbackEventPayload {
 class SearchFeedbackEventBuilder
     implements
         SearchFeedbackEventBuilderStart,
-        SearchFeedbackEventBuilderQuery,
         SearchFeedbackEventBuilderEvent,
         SearchFeedbackEventBuilderItem,
         SearchFeedbackEventBuilderReady {
-  String? _project;
-  String? _collection;
   String _handler = 'default';
   String? _query;
   SearchFeedbackEventType? _eventType;
   String? _itemId;
   int? _itemOrder;
   double? _itemPrice;
+  int? _itemQuantity;
 
+  String? _cartId;
   String? _url;
   String? _sessionId;
   String? _userId;
   String? _userIp;
   String? _userCountry;
-  String? _token;
-
-  @override
-  SearchFeedbackEventBuilderQuery forCollection({
-    required String project,
-    required String collection,
-    String handler = 'default',
-  }) {
-    assert(project.trim().isNotEmpty, 'project is required');
-    assert(collection.trim().isNotEmpty, 'collection is required');
-    assert(handler.trim().isNotEmpty, 'handler cannot be empty');
-    _project = project;
-    _collection = collection;
-    _handler = handler;
-    return this;
-  }
+  String? _requestSource;
 
   @override
   SearchFeedbackEventBuilderEvent forQuery(String query) {
@@ -147,12 +133,22 @@ class SearchFeedbackEventBuilder
     required String id,
     required int order,
     double? price,
+    int? quantity,
   }) {
     assert(id.trim().isNotEmpty, 'item id is required');
     assert(order >= 1, 'item order must be >= 1');
+    assert(quantity == null || quantity >= 1, 'item quantity must be >= 1');
     _itemId = id;
     _itemOrder = order;
     _itemPrice = price;
+    _itemQuantity = quantity;
+    return this;
+  }
+
+  @override
+  SearchFeedbackEventBuilderReady withHandler(String handler) {
+    assert(handler.trim().isNotEmpty, 'handler cannot be empty');
+    _handler = handler;
     return this;
   }
 
@@ -160,6 +156,20 @@ class SearchFeedbackEventBuilder
   SearchFeedbackEventBuilderReady withUrl(String url) {
     assert(url.trim().isNotEmpty, 'url cannot be empty');
     _url = url;
+    return this;
+  }
+
+  @override
+  SearchFeedbackEventBuilderReady withCart(String cartId) {
+    assert(cartId.trim().isNotEmpty, 'cartId cannot be empty');
+    _cartId = cartId;
+    return this;
+  }
+
+  @override
+  SearchFeedbackEventBuilderReady withRequestSource(String source) {
+    assert(source.trim().isNotEmpty, 'request source cannot be empty');
+    _requestSource = source;
     return this;
   }
 
@@ -178,46 +188,32 @@ class SearchFeedbackEventBuilder
   }
 
   @override
-  SearchFeedbackEventBuilderReady withToken(String token) {
-    assert(token.trim().isNotEmpty, 'token cannot be empty');
-    _token = token;
-    return this;
-  }
-
-  @override
   SearchFeedbackEventPayload build() {
-    final project = _project;
-    final collection = _collection;
     final query = _query;
     final eventType = _eventType;
     final itemId = _itemId;
     final itemOrder = _itemOrder;
 
-    assert(project != null && project.trim().isNotEmpty, 'project is required');
-    assert(
-      collection != null && collection.trim().isNotEmpty,
-      'collection is required',
-    );
     assert(query != null && query.trim().isNotEmpty, 'query is required');
     assert(eventType != null, 'eventType is required');
     assert(itemId != null && itemId.trim().isNotEmpty, 'itemId is required');
     assert(itemOrder != null && itemOrder >= 1, 'itemOrder must be >= 1');
 
     return SearchFeedbackEventPayload(
-      project: project!,
-      collection: collection!,
       handler: _handler,
       query: query!,
       eventType: eventType!,
       itemId: itemId!,
       itemOrder: itemOrder!,
       itemPrice: _itemPrice,
+      itemQuantity: _itemQuantity,
+      cartId: _cartId,
       url: _url,
       sessionId: _sessionId,
       userId: _userId,
       userIp: _userIp,
       userCountry: _userCountry,
-      token: _token,
+      requestSource: _requestSource,
     );
   }
 
@@ -229,20 +225,20 @@ class SearchFeedbackEventBuilder
     final repo = GetIt.instance<FeedbackRepository>();
     // ignore: deprecated_member_use_from_same_package
     await repo.submitSearchFeedbackEvent(
-      project: payload.project,
-      collection: payload.collection,
       handler: payload.handler,
       query: payload.query,
       eventType: payload.eventType,
       itemId: payload.itemId,
       itemOrder: payload.itemOrder,
       itemPrice: payload.itemPrice,
+      itemQuantity: payload.itemQuantity,
+      cartId: payload.cartId,
       url: payload.url,
       sessionId: payload.sessionId,
       userId: payload.userId,
       userIp: payload.userIp,
       userCountry: payload.userCountry,
-      token: payload.token,
+      requestSource: payload.requestSource,
     );
   }
 }
