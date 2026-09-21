@@ -23,6 +23,11 @@ linter:
     - type_annotate_public_apis
     - unawaited_futures
     - use_key_in_widget_constructors
+    # Not in lints/recommended.yaml. Without it the package's own deprecations
+    # are invisible in-package, so README snippets and example/ could document
+    # deprecated APIs with a clean `flutter analyze`. Note this is a LINT rule:
+    # putting it under `analyzer: errors:` is silently inert.
+    - deprecated_member_use_from_same_package
 
 analyzer:
   exclude:

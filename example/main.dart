@@ -5,136 +5,90 @@
 import 'package:lableb_flutter_sdk/lableb_flutter_sdk.dart';
 
 /// Example usage of the Lableb Flutter SDK.
-/// 
-/// This file demonstrates how to use all the main features of the SDK
-/// including initialization, indexing, searching, autocomplete,
-/// recommendations, and feedback submission.
+///
+/// This mirrors the Quick Start in README.md: initialization, search,
+/// autocomplete, recommendations, feedback, and error handling.
+///
+/// Replace `platformName`, `indexName`, the API key and the handler with your
+/// own project's values before running.
 void main() async {
   // ============================================
   // 1. SDK INITIALIZATION
   // ============================================
   print('=== Initializing SDK ===');
-  
+
+  // platformName and indexName are required: they become the
+  // /v2/projects/{platformName}/indices/{indexName}/... path segments, and
+  // search, autocomplete and feedback all throw ValidationException without
+  // platformName.
   final sdk = LablebSDK(
-    baseUrl: 'https://api.lableb.com', // Replace with your actual base URL
-    apiKey: 'your-api-key-here', // Replace with your actual API key
-    enableLogging: true, // Enable logging for debugging
+    baseUrl: 'https://api.lableb.com',
+    apiKey: 'your-api-key',
+    platformName: 'your-platform-name',
+    indexName: 'your-index-name',
+    enableLogging: true, // Optional: for debugging
     connectTimeout: const Duration(seconds: 30),
     receiveTimeout: const Duration(seconds: 30),
   );
 
+  // Every search and autocomplete request runs against a *handler* configured
+  // on your project's Lableb dashboard. The SDK defaults to 'default', and a
+  // project not provisioned with that handler returns HTTP 404 — so pass the
+  // one your project actually has.
+  const handler = 'suggest';
+
   print('SDK initialized successfully!\n');
 
   // ============================================
-  // 2. INDEXING DATA
-  // ============================================
-  print('=== Indexing Data ===');
-  
-  try {
-    // Index a single item
-    final item = IndexEntity(
-      id: 'item-1',
-      data: {
-        'title': 'Example Product',
-        'description': 'This is an example product description',
-        'price': 99.99,
-        'category': 'electronics',
-      },
-    );
-
-    final indexedItem = await sdk.index.indexItem(item);
-    print('Item indexed: ${indexedItem.id}');
-
-    // Index multiple items in batch
-    final batchItems = [
-      IndexEntity(
-        id: 'item-2',
-        data: {
-          'title': 'Another Product',
-          'description': 'Another product description',
-          'price': 149.99,
-          'category': 'electronics',
-        },
-      ),
-      IndexEntity(
-        id: 'item-3',
-        data: {
-          'title': 'Third Product',
-          'description': 'Third product description',
-          'price': 79.99,
-          'category': 'clothing',
-        },
-      ),
-    ];
-
-    final indexedItems = await sdk.index.indexBatch(batchItems);
-    print('Batch indexed: ${indexedItems.length} items\n');
-  } catch (e) {
-    print('Error indexing data: $e\n');
-  }
-
-  // ============================================
-  // 3. SEARCH OPERATIONS
+  // 2. SEARCH
   // ============================================
   print('=== Performing Search ===');
-  
+
   try {
-    // Basic search
-    final searchResult = await sdk.search.search(
-      query: 'product',
-      page: 1,
-      pageSize: 10,
-    );
+    final result = await sdk
+        .searchRequest()
+        .forQuery('product')
+        .withHandler(handler)
+        .paginate(page: 1, pageSize: 10)
+        .send();
 
-    print('Search Results:');
-    print('Total results: ${searchResult.totalResults}');
-    print('Current page: ${searchResult.pagination.currentPage}');
-    print('Total pages: ${searchResult.pagination.totalPages}');
-    
-    for (final result in searchResult.results) {
-      print('  - ${result.id}: ${result.data['title']} (score: ${result.score})');
+    print('Found ${result.results.length} of ${result.totalResults} results');
+    print('Page ${result.pagination.currentPage} of '
+        '${result.pagination.totalPages}');
+
+    for (final item in result.results) {
+      // Keys come from your index schema — 'name' here, not 'title'.
+      print('  - ${item.id}: ${item.data['name']} (score: ${item.score})');
     }
     print('');
 
-    // Search with filters
-    final filteredSearch = await sdk.search.search(
-      query: 'product',
-      filters: {
-        'category': 'electronics',
-        'price': {'gte': 50, 'lte': 200},
-      },
-      sort: {'price': 'asc'},
-      page: 1,
-      pageSize: 5,
-    );
+    // The same builder with filters and sorting.
+    final filtered = await sdk
+        .searchRequest()
+        .forQuery('product')
+        .withHandler(handler)
+        .withFilters({'category': 'electronics'})
+        .sortBy('price', direction: 'asc')
+        .paginate(page: 1, pageSize: 5)
+        .send();
 
-    print('Filtered Search Results:');
-    print('Total results: ${filteredSearch.totalResults}\n');
+    print('Filtered search: ${filtered.totalResults} results\n');
   } catch (e) {
-    if (e is NetworkException) {
-      print('Network error: ${e.message}');
-    } else if (e is UnauthorizedException) {
-      print('Unauthorized: ${e.message}');
-    } else if (e is ServerException) {
-      print('Server error: ${e.message}');
-    } else {
-      print('Error performing search: $e');
-    }
-    print('');
+    print('Error performing search: $e\n');
   }
 
   // ============================================
-  // 4. AUTOCOMPLETE OPERATIONS
+  // 3. AUTOCOMPLETE
   // ============================================
   print('=== Getting Autocomplete Suggestions ===');
-  
+
   try {
     final suggestions = await sdk.autocomplete.getSuggestions(
       query: 'prod',
       limit: 5,
+      handler: handler,
     );
 
-    print('Autocomplete Suggestions:');
     for (final suggestion in suggestions) {
       print('  - ${suggestion.text} (score: ${suggestion.score})');
     }
@@ -144,55 +98,47 @@ void main() async {
   }
 
   // ============================================
-  // 5. RECOMMENDATION OPERATIONS
+  // 4. RECOMMENDATIONS
   // ============================================
   print('=== Getting Recommendations ===');
-  
-  try {
-    // User-based recommendations
-    final userRecommendations = await sdk.recommender.getRecommendations(
-      userId: 'user-123',
-      limit: 10,
-      context: {
-        'category': 'electronics',
-      },
-    );
 
-    print('User Recommendations:');
-    for (final recommendation in userRecommendations) {
-      print('  - ${recommendation.id}: ${recommendation.data['title']} '
+  try {
+    // Item-based recommendations.
+    final itemRecommendations =
+        await sdk.recommendations().forItem('item-1').limit(10).send();
+
+    for (final recommendation in itemRecommendations) {
+      print('  - ${recommendation.id}: ${recommendation.data['name']} '
           '(score: ${recommendation.score})');
     }
     print('');
 
-    // Item-based recommendations
-    final itemRecommendations = await sdk.recommender.getRecommendations(
-      itemId: 'item-1',
-      limit: 5,
-    );
+    // User-based, with extra context.
+    final userRecommendations = await sdk
+        .recommendations()
+        .fromUser('user-123')
+        .withContext({'category': 'electronics'})
+        .limit(5)
+        .send();
 
-    print('Item-based Recommendations:');
-    for (final recommendation in itemRecommendations) {
-      print('  - ${recommendation.id}: ${recommendation.data['title']}');
-    }
-    print('');
+    print('User recommendations: ${userRecommendations.length}\n');
   } catch (e) {
     print('Error getting recommendations: $e\n');
   }
 
   // ============================================
-  // 6. FEEDBACK SUBMISSION
+  // 5. FEEDBACK SUBMISSION
   // ============================================
   print('=== Submitting Feedback ===');
-  
+
   try {
-    // Submit search feedback event (click/add_to_cart/purchase)
+    // Search feedback: what the user did with a search result.
     await sdk
         .searchFeedbackEvent()
         .forQuery('product')
         .event(SearchFeedbackEventType.click)
         .forItem(id: 'item-1', order: 1, price: 95.5, quantity: 1)
-        .withHandler('default')
+        .withHandler(handler)
         .withUrl('http://mysite.com/posts/lableb-post')
         .withCart('CART_98765')
         .withRequestSource('mobile')
@@ -205,23 +151,24 @@ void main() async {
         .send();
     print('Search feedback event submitted successfully');
 
-    // Submit autocomplete feedback: which suggestion the user took
+    // Autocomplete feedback: which suggestion the user took.
     await sdk
         .autocompleteFeedback()
         .forQuery('samsu')
         .event(SearchFeedbackEventType.click)
         .forItem(id: '153-ar', order: 4)
-        .withHandler('suggest')
+        .withHandler(handler)
         .fromUser(id: '2313', sessionId: '1c4CqE')
         .send();
     print('Autocomplete feedback submitted successfully');
 
-    // Submit recommendation feedback: source item -> recommended target item
+    // Recommendation feedback: source item -> recommended target item.
     await sdk
         .recommenderFeedback()
         .forRecommendation(sourceId: '153-en', targetId: '154-ar')
         .event(SearchFeedbackEventType.click)
         .atOrder(2)
+        .withHandler(handler)
         .send();
     print('Recommender feedback submitted successfully\n');
   } catch (e) {
@@ -229,58 +176,50 @@ void main() async {
   }
 
   // ============================================
-  // 7. ERROR HANDLING EXAMPLES
+  // 6. ERROR HANDLING
   // ============================================
-  print('=== Error Handling Examples ===');
-  
+  print('=== Error Handling ===');
+
   try {
-    // This will likely fail if the item doesn't exist
-    await sdk.index.deleteItem('non-existent-item');
-  } on NotFoundException catch (e) {
-    print('Item not found: ${e.message}');
-  } on UnauthorizedException catch (e) {
-    print('Unauthorized access: ${e.message}');
+    await sdk.searchRequest().forQuery('example').withHandler(handler).send();
+    print('Search completed without error');
   } on NetworkException catch (e) {
     print('Network error: ${e.message}');
-  } on TimeoutException catch (e) {
-    print('Request timed out: ${e.message}');
+  } on UnauthorizedException catch (e) {
+    print('Unauthorized: ${e.message}');
+  } on ForbiddenException catch (e) {
+    print('Forbidden: ${e.message}');
+  } on NotFoundException catch (e) {
+    print('Not found: ${e.message}');
   } on ValidationException catch (e) {
     print('Validation error: ${e.message}');
   } on ServerException catch (e) {
     print('Server error: ${e.message}');
+  } on TimeoutException catch (e) {
+    print('Request timed out: ${e.message}');
   } on LablebException catch (e) {
     print('Lableb error: ${e.message}');
-  } catch (e) {
-    print('Unexpected error: $e');
   }
 
   // ============================================
-  // 8. UPDATE AND DELETE OPERATIONS
+  // 7. ADVANCED CONFIGURATION
   // ============================================
-  print('\n=== Update and Delete Operations ===');
-  
-  try {
-    // Update an existing item
-    final updatedItem = IndexEntity(
-      id: 'item-1',
-      data: {
-        'title': 'Updated Product',
-        'description': 'Updated description',
-        'price': 89.99,
-        'category': 'electronics',
-      },
-    );
+  print('\n=== Advanced Configuration ===');
 
-    final result = await sdk.index.updateItem(updatedItem);
-    print('Item updated: ${result.id}');
-
-    // Delete an item
-    await sdk.index.deleteItem('item-3');
-    print('Item deleted successfully');
-  } catch (e) {
-    print('Error in update/delete operations: $e');
-  }
+  // Custom timeouts and default headers are constructor options.
+  final customSdk = LablebSDK(
+    baseUrl: 'https://api.lableb.com',
+    apiKey: 'your-api-key',
+    platformName: 'your-platform-name',
+    indexName: 'your-index-name',
+    connectTimeout: const Duration(seconds: 60),
+    receiveTimeout: const Duration(seconds: 60),
+    sendTimeout: const Duration(seconds: 60),
+    defaultHeaders: {
+      'X-Custom-Header': 'value',
+    },
+  );
+  print('Configured ${customSdk.runtimeType} with custom timeouts and headers');
 
   print('\n=== Example completed ===');
 }
-
