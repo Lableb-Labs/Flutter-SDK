@@ -148,6 +148,7 @@ await sdk
     .forRecommendation(sourceId: '153-en', targetId: '154-ar')
     .event(SearchFeedbackEventType.click)
     .atOrder(2)
+    .withHandler('suggest')
     .send();
 ```
 
