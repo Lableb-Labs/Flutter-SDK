@@ -5,6 +5,26 @@ All notable changes to this package are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 1.0.1
+
+### Changed
+
+- Rewrote `example/main.dart` to match the README. The published example could
+  not run: it constructed `LablebSDK` without `platformName` or `indexName`, so
+  every call threw `ValidationException`. It also demonstrated indexing (which
+  the README withdraws), called `getSuggestions` and `searchFeedbackEvent`
+  without an explicit handler, used the deprecated `sdk.search.search` and
+  `sdk.recommender.getRecommendations`, and read `item.data['title']`, which is
+  null on live documents.
+
+### Fixed
+
+- Enabled the `deprecated_member_use_from_same_package` lint, so the package's
+  own deprecations are now visible in-package. Without it, `example/` could call
+  deprecated methods with a clean `flutter analyze`.
+
+No library code changed in this release; `lib/` is identical to 1.0.0.
+
 ## 1.0.0
 
 Initial release.
