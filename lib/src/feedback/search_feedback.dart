@@ -51,10 +51,12 @@ extension SearchFeedbackModule on LablebSDK {
   /// await sdk
   ///     .recommenderFeedback()
   ///     .forRecommendation(sourceId: '153-en', targetId: '154-ar')
-  ///     .event(SearchFeedbackEventType.click)
+  ///     .event(SearchFeedbackEventType.click) // Optional: can be omitted
   ///     .atOrder(2)
   ///     .send();
   /// ```
+  ///
+  /// The `event()` step is optional per the API specification.
   ///
   /// This is the one feedback endpoint that takes a source/target pair
   /// instead of a query: it reports that a user moved from the document the

@@ -163,6 +163,7 @@ void main() async {
     print('Autocomplete feedback submitted successfully');
 
     // Recommendation feedback: source item -> recommended target item.
+    // Note: .event() is optional per API spec
     await sdk
         .recommenderFeedback()
         .forRecommendation(sourceId: '153-en', targetId: '154-ar')

@@ -12,14 +12,13 @@ abstract interface class RecommenderFeedbackBuilderStart {
   /// [sourceId] is the document the recommendation was shown on and
   /// [targetId] is the recommended document the user moved to. They are the
   /// only two fields this endpoint requires.
-  RecommenderFeedbackBuilderReady forRecommendation({
+  RecommenderFeedbackBuilderEvent forRecommendation({
     required String sourceId,
     required String targetId,
   });
 }
 
-/// Final step: optional enrichment + terminal send/build.
-abstract interface class RecommenderFeedbackBuilderReady {
+abstract interface class RecommenderFeedbackBuilderEvent {
   /// Records the kind of interaction.
   ///
   /// Optional: the API accepts a recommendation event without it.
@@ -120,6 +119,7 @@ class RecommenderFeedbackEventPayload {
 class RecommenderFeedbackBuilder
     implements
         RecommenderFeedbackBuilderStart,
+        RecommenderFeedbackBuilderEvent,
         RecommenderFeedbackBuilderReady {
   String _handler = 'default';
   String? _sourceId;
@@ -140,7 +140,7 @@ class RecommenderFeedbackBuilder
   String? _requestSource;
 
   @override
-  RecommenderFeedbackBuilderReady forRecommendation({
+  RecommenderFeedbackBuilderEvent forRecommendation({
     required String sourceId,
     required String targetId,
   }) {

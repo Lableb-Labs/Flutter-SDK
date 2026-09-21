@@ -75,7 +75,8 @@ class FeedbackRepositoryImpl implements FeedbackRepository {
 
     if (!feedbackEventResponse.isSuccess) {
       throw Exception(
-        'Feedback event failed with code ${feedbackEventResponse.code}',
+        'Search feedback event failed with code ${feedbackEventResponse.code}. '
+        'Response: ${feedbackEventResponse.response}',
       );
     }
   }
@@ -178,7 +179,8 @@ class FeedbackRepositoryImpl implements FeedbackRepository {
 
     if (!feedbackEventResponse.isSuccess) {
       throw Exception(
-        'Feedback event failed with code ${feedbackEventResponse.code}',
+        'Autocomplete feedback event failed with code ${feedbackEventResponse.code}. '
+        'Response: ${feedbackEventResponse.response}',
       );
     }
   }
@@ -247,7 +249,8 @@ class FeedbackRepositoryImpl implements FeedbackRepository {
 
     if (!feedbackEventResponse.isSuccess) {
       throw Exception(
-        'Feedback event failed with code ${feedbackEventResponse.code}',
+        'Recommendation feedback event failed with code ${feedbackEventResponse.code}. '
+        'Response: ${feedbackEventResponse.response}',
       );
     }
   }
