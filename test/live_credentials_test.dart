@@ -22,6 +22,11 @@
 // 'suggest' is the only handler confirmed configured on this project's
 // dashboard; 'default' (this SDK's default) 404s for this project — a
 // Lableb-dashboard config gap, not a client bug.
+// This file deliberately exercises the deprecated repository methods
+// (sdk.search.search, sdk.recommender.getRecommendations) alongside the
+// builders, to prove both surfaces behave identically against the live API.
+// ignore_for_file: deprecated_member_use_from_same_package
+
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lableb_flutter_sdk/lableb_flutter_sdk.dart';
