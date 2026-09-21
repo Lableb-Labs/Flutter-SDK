@@ -186,39 +186,43 @@ void main() async {
   print('=== Submitting Feedback ===');
   
   try {
-    // Submit search feedback event (NEW API: click/add_to_cart/purchase)
-    await sdk.feedback.submitSearchFeedbackEvent(
-      handler: 'default',
-      query: 'product',
-      eventType: SearchFeedbackEventType.click,
-      itemId: 'item-1',
-      itemOrder: 1,
-      itemPrice: 95.5,
-      url: 'http://mysite.com/posts/lableb-post',
-      sessionId: '1c4Hb23',
-      userId: 'user-123',
-      userIp: '192.111.24.21',
-      userCountry: 'DE',
-    );
+    // Submit search feedback event (click/add_to_cart/purchase)
+    await sdk
+        .searchFeedbackEvent()
+        .forQuery('product')
+        .event(SearchFeedbackEventType.click)
+        .forItem(id: 'item-1', order: 1, price: 95.5, quantity: 1)
+        .withHandler('default')
+        .withUrl('http://mysite.com/posts/lableb-post')
+        .withCart('CART_98765')
+        .withRequestSource('mobile')
+        .fromUser(
+          id: 'user-123',
+          sessionId: '1c4Hb23',
+          ip: '192.111.24.21',
+          country: 'DE',
+        )
+        .send();
     print('Search feedback event submitted successfully');
 
-    // Submit autocomplete feedback
-    await sdk.feedback.submitAutocompleteFeedback(
-      query: 'prod',
-      suggestion: 'product',
-      feedbackValue: 'clicked',
-    );
+    // Submit autocomplete feedback: which suggestion the user took
+    await sdk
+        .autocompleteFeedback()
+        .forQuery('samsu')
+        .event(SearchFeedbackEventType.click)
+        .forItem(id: '153-ar', order: 4)
+        .withHandler('suggest')
+        .fromUser(id: '2313', sessionId: '1c4CqE')
+        .send();
     print('Autocomplete feedback submitted successfully');
 
-    // Submit recommender feedback
-    await sdk.feedback.submitRecommenderFeedback(
-      recommendationId: 'item-2',
-      feedbackValue: 'positive',
-      userId: 'user-123',
-      metadata: {
-        'purchased': true,
-      },
-    );
+    // Submit recommendation feedback: source item -> recommended target item
+    await sdk
+        .recommenderFeedback()
+        .forRecommendation(sourceId: '153-en', targetId: '154-ar')
+        .event(SearchFeedbackEventType.click)
+        .atOrder(2)
+        .send();
     print('Recommender feedback submitted successfully\n');
   } catch (e) {
     print('Error submitting feedback: $e\n');

@@ -21,6 +21,7 @@ abstract interface class SearchFeedbackEventBuilderItem {
     required String id,
     required int order,
     double? price,
+    int? quantity,
   });
 }
 
@@ -30,6 +31,12 @@ abstract interface class SearchFeedbackEventBuilderReady {
   SearchFeedbackEventBuilderReady withHandler(String handler);
 
   SearchFeedbackEventBuilderReady withUrl(String url);
+
+  /// Ties this event to the user's current shopping session.
+  SearchFeedbackEventBuilderReady withCart(String cartId);
+
+  /// Records the originating platform (`web`, `mobile`, `ios`, ...).
+  SearchFeedbackEventBuilderReady withRequestSource(String source);
 
   SearchFeedbackEventBuilderReady fromUser({
     String? id,
@@ -55,11 +62,14 @@ class SearchFeedbackEventPayload {
   final String itemId;
   final int itemOrder;
   final double? itemPrice;
+  final int? itemQuantity;
+  final String? cartId;
   final String? url;
   final String? sessionId;
   final String? userId;
   final String? userIp;
   final String? userCountry;
+  final String? requestSource;
 
   const SearchFeedbackEventPayload({
     required this.handler,
@@ -68,11 +78,14 @@ class SearchFeedbackEventPayload {
     required this.itemId,
     required this.itemOrder,
     this.itemPrice,
+    this.itemQuantity,
+    this.cartId,
     this.url,
     this.sessionId,
     this.userId,
     this.userIp,
     this.userCountry,
+    this.requestSource,
   });
 }
 
@@ -92,12 +105,15 @@ class SearchFeedbackEventBuilder
   String? _itemId;
   int? _itemOrder;
   double? _itemPrice;
+  int? _itemQuantity;
 
+  String? _cartId;
   String? _url;
   String? _sessionId;
   String? _userId;
   String? _userIp;
   String? _userCountry;
+  String? _requestSource;
 
   @override
   SearchFeedbackEventBuilderEvent forQuery(String query) {
@@ -117,12 +133,15 @@ class SearchFeedbackEventBuilder
     required String id,
     required int order,
     double? price,
+    int? quantity,
   }) {
     assert(id.trim().isNotEmpty, 'item id is required');
     assert(order >= 1, 'item order must be >= 1');
+    assert(quantity == null || quantity >= 1, 'item quantity must be >= 1');
     _itemId = id;
     _itemOrder = order;
     _itemPrice = price;
+    _itemQuantity = quantity;
     return this;
   }
 
@@ -137,6 +156,20 @@ class SearchFeedbackEventBuilder
   SearchFeedbackEventBuilderReady withUrl(String url) {
     assert(url.trim().isNotEmpty, 'url cannot be empty');
     _url = url;
+    return this;
+  }
+
+  @override
+  SearchFeedbackEventBuilderReady withCart(String cartId) {
+    assert(cartId.trim().isNotEmpty, 'cartId cannot be empty');
+    _cartId = cartId;
+    return this;
+  }
+
+  @override
+  SearchFeedbackEventBuilderReady withRequestSource(String source) {
+    assert(source.trim().isNotEmpty, 'request source cannot be empty');
+    _requestSource = source;
     return this;
   }
 
@@ -173,11 +206,14 @@ class SearchFeedbackEventBuilder
       itemId: itemId!,
       itemOrder: itemOrder!,
       itemPrice: _itemPrice,
+      itemQuantity: _itemQuantity,
+      cartId: _cartId,
       url: _url,
       sessionId: _sessionId,
       userId: _userId,
       userIp: _userIp,
       userCountry: _userCountry,
+      requestSource: _requestSource,
     );
   }
 
@@ -195,11 +231,14 @@ class SearchFeedbackEventBuilder
       itemId: payload.itemId,
       itemOrder: payload.itemOrder,
       itemPrice: payload.itemPrice,
+      itemQuantity: payload.itemQuantity,
+      cartId: payload.cartId,
       url: payload.url,
       sessionId: payload.sessionId,
       userId: payload.userId,
       userIp: payload.userIp,
       userCountry: payload.userCountry,
+      requestSource: payload.requestSource,
     );
   }
 }

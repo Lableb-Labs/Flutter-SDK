@@ -72,6 +72,9 @@ export 'src/data/requests/search_request.dart';
 export 'src/data/requests/autocomplete_request.dart';
 export 'src/data/requests/recommender_request.dart';
 export 'src/data/requests/feedback_request.dart';
+export 'src/data/requests/search_feedback_event_request.dart';
+export 'src/data/requests/autocomplete_feedback_event_request.dart';
+export 'src/data/requests/recommend_feedback_event_request.dart';
 
 // Data Responses
 export 'src/data/responses/index_response.dart';
@@ -81,7 +84,6 @@ export 'src/data/responses/recommender_response.dart';
 export 'src/data/responses/feedback_response.dart';
 export 'src/data/responses/feedback_event_response.dart';
 export 'src/data/responses/settings_response.dart';
-export 'src/data/requests/search_feedback_event_request.dart';
 
 // API Client (for advanced usage)
 export 'src/api/api_client.dart';

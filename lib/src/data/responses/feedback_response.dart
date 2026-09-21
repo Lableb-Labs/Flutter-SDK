@@ -1,6 +1,7 @@
 /// Response model for feedback operations.
 /// 
 /// This model represents the response from the feedback API.
+@Deprecated('Models a feedback wire format the Lableb API does not accept; scheduled for removal.')
 class FeedbackResponse {
   /// Whether the feedback was successfully submitted.
   final bool success;

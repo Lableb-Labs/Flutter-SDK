@@ -4,6 +4,7 @@ import '../../domain/entities/feedback_entity.dart';
 /// 
 /// This model is used for serialization/deserialization when
 /// communicating with the API.
+@Deprecated('Models a feedback wire format the Lableb API does not accept; scheduled for removal.')
 class FeedbackModel {
   /// Type of feedback (search, autocomplete, recommender).
   final String feedbackType;

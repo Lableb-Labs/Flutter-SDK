@@ -104,9 +104,9 @@ lableb_flutter_sdk/
 - `POST /recommender` - Get personalized recommendations
 
 ### ✅ Feedback
-- `POST /feedback/search` - Submit search feedback
-- `POST /feedback/autocomplete` - Submit autocomplete feedback
-- `POST /feedback/recommender` - Submit recommender feedback
+- `POST /v2/projects/{project}/indices/{index}/search/{handler}/feedback/events` - Submit search feedback
+- `POST /v2/projects/{project}/indices/{index}/autocomplete/{handler}/feedback/events` - Submit autocomplete feedback
+- `POST /v2/projects/{project}/indices/{index}/recommend/{handler}/feedback/events` - Submit recommendation feedback
 
 ## Key Features
 

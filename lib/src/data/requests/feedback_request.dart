@@ -2,6 +2,7 @@
 /// 
 /// This model is used to structure the request body when
 /// submitting feedback.
+@Deprecated('Models a feedback wire format the Lableb API does not accept; scheduled for removal.')
 class FeedbackRequest {
   /// Type of feedback (search, autocomplete, recommender).
   final String feedbackType;

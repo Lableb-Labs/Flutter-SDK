@@ -123,10 +123,40 @@ await sdk
 
 `event(...)` accepts `click`, `addToCart` and `purchase`.
 
-> **Autocomplete and recommender feedback are not supported yet.**
-> `sdk.autocompleteFeedback()` and `sdk.recommenderFeedback()` exist but do not
-> target the platform's documented feedback endpoints, and requests made through
-> them are rejected. Use search feedback only until they are rebuilt.
+Autocomplete feedback reports which suggestion the user took for the prefix
+they typed. The suggestion is identified by `forItem`, exactly as a search
+result is:
+
+```dart
+await sdk
+    .autocompleteFeedback()
+    .forQuery('samsu')
+    .event(SearchFeedbackEventType.click)
+    .forItem(id: '153-ar', order: 4)
+    .withHandler('suggest')
+    .fromUser(id: '2313', sessionId: '1c4CqE')
+    .send();
+```
+
+Recommendation feedback reports that a user moved from one document to another
+recommended alongside it. It is the one feedback endpoint that takes a
+source/target pair instead of a query:
+
+```dart
+await sdk
+    .recommenderFeedback()
+    .forRecommendation(sourceId: '153-en', targetId: '154-ar')
+    .event(SearchFeedbackEventType.click)
+    .atOrder(2)
+    .send();
+```
+
+All three accept the same optional commerce and attribution fields —
+`withCart(...)`, `withRequestSource(...)`, `fromUser(...)`, and a `quantity` on
+the item — and all three default to the `default` handler. Set
+`withHandler(...)` to whatever your project is provisioned with: a project that
+only has a `suggest` handler returns 404 on `default`, exactly as it does for
+search.
 
 ## Error Handling
 
@@ -220,12 +250,13 @@ lib/
 
 - `submitSearchFeedbackEvent(...)` - Submit search feedback events
   (click/add_to_cart/purchase). **Deprecated** - use `sdk.searchFeedbackEvent()`.
+- `submitAutocompleteFeedbackEvent(...)` - Submit autocomplete feedback events.
+  **Deprecated** - use `sdk.autocompleteFeedback()`.
+- `submitRecommendFeedbackEvent(...)` - Submit recommendation feedback events
+  (source item -> target item). **Deprecated** - use
+  `sdk.recommenderFeedback()`.
 - `submitSearchFeedback(...)` - Legacy search feedback. **Deprecated** - use
   `sdk.searchFeedbackEvent()`.
-- `submitAutocompleteFeedback(...)` - Submit feedback for autocomplete.
-  **Deprecated** - use `sdk.autocompleteFeedback()`.
-- `submitRecommenderFeedback(...)` - Submit feedback for recommendations.
-  **Deprecated** - use `sdk.recommenderFeedback()`.
 
 ## Contributing
 
