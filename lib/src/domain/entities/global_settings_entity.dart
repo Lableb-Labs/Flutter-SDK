@@ -13,10 +13,15 @@ class GlobalSettings {
   /// filter (independent of [showOutofStackProducts]'s `is_available` filter).
   final bool disableQuantityFilter;
 
+  /// The project's search API key (`searchAPIKey`), used by the SDK when the
+  /// app does not pass its own `apiKey`. Null when the endpoint omits it.
+  final String? searchApiKey;
+
   const GlobalSettings({
     this.showOutofStackProducts = false,
     this.hasRecommendation = false,
     this.disableQuantityFilter = false,
+    this.searchApiKey,
   });
 
   /// Represents the "not fetched yet" / "fetch failed" state, matching

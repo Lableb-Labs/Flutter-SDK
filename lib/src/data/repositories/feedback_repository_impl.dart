@@ -33,6 +33,7 @@ class FeedbackRepositoryImpl implements FeedbackRepository {
     String? userCountry,
     String? requestSource,
   }) async {
+    await sdkSettingsReady();
     final options = locator<LablebSdkOptions>();
     final platformName = options.platformName;
     if (platformName == null || platformName.trim().isEmpty) {
@@ -59,7 +60,8 @@ class FeedbackRepositoryImpl implements FeedbackRepository {
       userId: userId,
       userIp: userIp,
       userCountry: userCountry,
-      requestSource: requestSource,
+      // An event without its own source falls back to the SDK-wide one.
+      requestSource: requestSource ?? options.requestSource,
     );
 
     final response = await _apiClient.post(
@@ -87,6 +89,7 @@ class FeedbackRepositoryImpl implements FeedbackRepository {
     required String feedbackValue,
     Map<String, dynamic>? metadata,
   }) async {
+    await sdkSettingsReady();
     try {
       // Backwards compatibility: map to click event with best-effort fields.
       final itemOrder = (metadata?['item_order'] as int?) ?? 1;
@@ -137,6 +140,7 @@ class FeedbackRepositoryImpl implements FeedbackRepository {
     String? userCountry,
     String? requestSource,
   }) async {
+    await sdkSettingsReady();
     final options = locator<LablebSdkOptions>();
     final platformName = options.platformName;
     if (platformName == null || platformName.trim().isEmpty) {
@@ -163,7 +167,8 @@ class FeedbackRepositoryImpl implements FeedbackRepository {
       userId: userId,
       userIp: userIp,
       userCountry: userCountry,
-      requestSource: requestSource,
+      // An event without its own source falls back to the SDK-wide one.
+      requestSource: requestSource ?? options.requestSource,
     );
 
     final response = await _apiClient.post(
@@ -203,6 +208,7 @@ class FeedbackRepositoryImpl implements FeedbackRepository {
     String? userCountry,
     String? requestSource,
   }) async {
+    await sdkSettingsReady();
     final options = locator<LablebSdkOptions>();
     final platformName = options.platformName;
     if (platformName == null || platformName.trim().isEmpty) {
@@ -232,7 +238,8 @@ class FeedbackRepositoryImpl implements FeedbackRepository {
       userId: userId,
       userIp: userIp,
       userCountry: userCountry,
-      requestSource: requestSource,
+      // An event without its own source falls back to the SDK-wide one.
+      requestSource: requestSource ?? options.requestSource,
     );
 
     final response = await _apiClient.post(

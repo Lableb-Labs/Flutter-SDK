@@ -16,13 +16,21 @@ class RecommenderResponse {
   });
 
   /// Creates a [RecommenderResponse] from a JSON map.
+  ///
+  /// Lableb's real REST responses wrap the payload in a `{"time", "code",
+  /// "response": {...}}` envelope with the documents under `results`; a bare
+  /// `recommendations`/`results` list is still accepted.
   factory RecommenderResponse.fromJson(Map<String, dynamic> json) {
+    final body = json['response'] is Map<String, dynamic>
+        ? json['response'] as Map<String, dynamic>
+        : json;
+
     return RecommenderResponse(
-      recommendations: (json['recommendations'] as List? ?? 
-                        json['results'] as List? ?? [])
+      recommendations: (body['results'] as List? ??
+                        body['recommendations'] as List? ?? [])
           .map((item) => RecommenderModel.fromJson(item as Map<String, dynamic>))
           .toList(),
-      executionTime: json['execution_time'] as int?,
+      executionTime: json['time'] as int? ?? body['execution_time'] as int?,
     );
   }
 

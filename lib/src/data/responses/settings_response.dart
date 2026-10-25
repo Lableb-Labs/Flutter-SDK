@@ -9,20 +9,27 @@ class SettingsResponse {
   final bool hasRecommendation;
   final bool disableQuantityFilter;
 
+  /// `searchAPIKey`, or null when it is missing or empty.
+  final String? searchApiKey;
+
   const SettingsResponse({
     required this.showOutofStackProducts,
     required this.hasRecommendation,
     required this.disableQuantityFilter,
+    this.searchApiKey,
   });
 
   factory SettingsResponse.fromJson(Map<String, dynamic> json) {
     final response = json['response'] as Map<String, dynamic>? ?? const {};
+    final searchApiKey = (response['searchAPIKey'] as String?)?.trim();
     return SettingsResponse(
       showOutofStackProducts:
           response['showOutofStackProducts'] as bool? ?? false,
       hasRecommendation: response['hasRecommendation'] as bool? ?? false,
       disableQuantityFilter:
           response['disableQuantityFilter'] as bool? ?? false,
+      searchApiKey:
+          searchApiKey == null || searchApiKey.isEmpty ? null : searchApiKey,
     );
   }
 
@@ -30,5 +37,6 @@ class SettingsResponse {
         showOutofStackProducts: showOutofStackProducts,
         hasRecommendation: hasRecommendation,
         disableQuantityFilter: disableQuantityFilter,
+        searchApiKey: searchApiKey,
       );
 }

@@ -60,6 +60,13 @@ final sdk = LablebSDK(
 );
 ```
 
+`apiKey` is optional. Leave it out and the SDK uses your project's search key
+(`searchAPIKey`) from the Lableb settings endpoint. A key you pass always wins.
+Requests made before settings arrive wait for them, so you can start searching
+right away. The same applies to `LablebSDK.init(...)`: `app_key` in
+`initialJson` is optional, and the SDK stays disabled only if settings have no
+key either.
+
 ### 2. Perform Search
 
 ```dart
@@ -103,6 +110,11 @@ final recommendations = await sdk
     .limit(10)
     .send();
 ```
+
+Lableb recommends documents similar to a source item, so an item id is
+required: use `forItem(...)` or `fromUserForItem(...)`. Calling `fromUser(...)`
+alone throws `ValidationException`. Each result's document fields are in
+`item.data`.
 
 ### 5. Submit Feedback
 
@@ -214,6 +226,85 @@ final sdk = LablebSDK(
   },
 );
 ```
+
+### Request Source
+
+`request_source` is sent on every search, autocomplete, and recommendation
+request, and on every feedback event. It defaults to `'mobile'`, so a mobile
+app needs nothing, and passing `null` also gets the default. A web app should
+pass `'web'`. Pass `''` to stop sending it. A feedback event can override it with `withRequestSource(...)`.
+
+```dart
+final sdk = LablebSDK(
+  baseUrl: 'https://api.lableb.com',
+  apiKey: 'your-api-key',
+  platformName: 'your-platform-name',
+  indexName: 'your-index-name',
+  requestSource: 'web', // omit for the 'mobile' default
+);
+```
+
+`LablebSDK.init(...)` takes the same `requestSource` parameter, with the same
+default.
+
+### Language
+
+Set `lang` and it is sent as `lang` on every search, autocomplete, and
+recommendation request. It is omitted when null or empty.
+
+```dart
+final sdk = LablebSDK(
+  baseUrl: 'https://api.lableb.com',
+  apiKey: 'your-api-key',
+  platformName: 'your-platform-name',
+  indexName: 'your-index-name',
+  lang: 'ar',
+);
+
+// Zid integrations
+await LablebSDK.init(initialJson: initialJson, lang: 'ar');
+```
+
+When the user changes the app language, call `LablebSDK.setLang(...)`. The next
+request uses the new value; nothing needs to be re-initialized. It is safe to
+call at any time, including before the SDK is initialized.
+
+```dart
+LablebSDK.setLang(locale.languageCode); // e.g. 'en'
+LablebSDK.setLang(null);                // stop sending lang
+```
+
+### Session ID
+
+Set `sessionId` and it is sent as `session_id` on every search, autocomplete,
+and recommendation request. It is omitted when null or empty, and the SDK never
+generates one itself.
+
+```dart
+final sdk = LablebSDK(
+  baseUrl: 'https://api.lableb.com',
+  apiKey: 'your-api-key',
+  platformName: 'your-platform-name',
+  indexName: 'your-index-name',
+  sessionId: 'session-123',
+);
+
+// Zid integrations
+await LablebSDK.init(initialJson: initialJson, sessionId: 'session-123');
+```
+
+Whenever the app starts a new session (on launch, login, or logout), call
+`LablebSDK.setSessionId(...)`. The next request uses the new value; nothing
+needs to be re-initialized. It is safe to call at any time, including before
+the SDK is initialized.
+
+```dart
+LablebSDK.setSessionId(newSessionId);
+LablebSDK.setSessionId(null); // stop sending session_id
+```
+
+Feedback events still take their session per event, through
+`fromUser(id: ..., sessionId: ...)`.
 
 ## Architecture
 

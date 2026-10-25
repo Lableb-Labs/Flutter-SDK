@@ -25,6 +25,7 @@ class AutocompleteRepositoryImpl implements AutocompleteRepository {
     Map<String, dynamic>? filters,
     String handler = 'default',
   }) async {
+    await sdkSettingsReady();
     try {
       final options = locator<LablebSdkOptions>();
       final platformName = options.platformName;
@@ -40,6 +41,9 @@ class AutocompleteRepositoryImpl implements AutocompleteRepository {
         query: query,
         limit: limit,
         filters: filters,
+        requestSource: options.requestSource,
+        lang: options.lang,
+        sessionId: options.sessionId,
       );
 
       final queryParameters = request.toQueryParameters();
