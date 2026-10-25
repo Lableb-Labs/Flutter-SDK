@@ -32,6 +32,19 @@ import '../cart/cart_event_builder.dart';
 /// Global service locator for the SDK.
 final GetIt locator = GetIt.instance;
 
+Future<void> _settingsReady = Future<void>.value();
+
+/// Completes once the startup settings fetch has finished (successfully or
+/// not). Repositories await it before every request so the stock filters,
+/// `hasRecommendation` and a settings-provided API key are in place.
+/// Already complete when no fetch is pending.
+Future<void> sdkSettingsReady() => _settingsReady;
+
+/// Records the pending startup settings fetch for [sdkSettingsReady].
+void markSettingsLoading(Future<void> loading) {
+  _settingsReady = loading;
+}
+
 /// Immutable configuration for initializing the SDK.
 class LablebSdkOptions {
   final String baseUrl;
@@ -56,6 +69,27 @@ class LablebSdkOptions {
   /// the convention Zid-integrated projects are provisioned with.
   final String indexName;
 
+  /// Request source (e.g. `'mobile'`) sent as `request_source` on search,
+  /// autocomplete and recommend requests, and on feedback events that do not
+  /// set their own. Omitted when null or empty.
+  ///
+  /// `LablebSDK(...)` and `LablebSDK.init(...)` turn a null value into
+  /// `LablebSDK.defaultRequestSource`; constructing these options directly
+  /// does not.
+  final String? requestSource;
+
+  /// Optional language (e.g. `'ar'`, `'en'`) sent as `lang` on search,
+  /// autocomplete and recommend requests. Omitted when null or empty.
+  ///
+  /// Change it at runtime with `LablebSDK.setLang(...)`.
+  final String? lang;
+
+  /// Optional session identifier sent as `session_id` on search,
+  /// autocomplete and recommend requests. Omitted when null or empty.
+  ///
+  /// Change it at runtime with `LablebSDK.setSessionId(...)`.
+  final String? sessionId;
+
   const LablebSdkOptions({
     required this.baseUrl,
     required this.apiKey,
@@ -72,6 +106,9 @@ class LablebSdkOptions {
     this.isZidIntegration = false,
     this.platformName,
     this.indexName = 'index',
+    this.requestSource,
+    this.lang,
+    this.sessionId,
   });
 }
 
@@ -89,6 +126,7 @@ void setupSdkLocator(
 }) {
   if (reset) {
     _unregisterAll();
+    _settingsReady = Future<void>.value();
   }
 
   _replaceSingleton<LablebSdkOptions>(options);

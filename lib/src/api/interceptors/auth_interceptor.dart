@@ -14,10 +14,15 @@ class AuthInterceptor extends Interceptor {
   /// Custom header name for API key (if not using Bearer).
   final String? customHeaderName;
 
+  /// When set, read on every request instead of [apiKey], so a key that
+  /// changes after construction is picked up.
+  final String Function()? apiKeyProvider;
+
   AuthInterceptor({
     required this.apiKey,
     this.authType = AuthType.bearer,
     this.customHeaderName,
+    this.apiKeyProvider,
   });
 
   @override
@@ -25,6 +30,12 @@ class AuthInterceptor extends Interceptor {
     RequestOptions options,
     RequestInterceptorHandler handler,
   ) {
+    final apiKey = apiKeyProvider?.call() ?? this.apiKey;
+    // No key yet (e.g. still waiting for settings): send no auth header.
+    if (apiKey.isEmpty) {
+      super.onRequest(options, handler);
+      return;
+    }
     switch (authType) {
       case AuthType.bearer:
         options.headers['Authorization'] = 'Bearer $apiKey';

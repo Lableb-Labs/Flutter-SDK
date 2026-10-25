@@ -26,7 +26,7 @@ import 'zid/zid_secure_storage.dart';
 /// ```dart
 /// final sdk = LablebSDK(
 ///   baseUrl: 'https://api.lableb.com',
-///   apiKey: 'your-api-key',
+///   platformName: 'your-platform-name', // the search key comes from settings
 /// );
 /// 
 /// // Use the repositories
@@ -35,6 +35,13 @@ import 'zid/zid_secure_storage.dart';
 class LablebSDK {
   static LablebSDK? _instance;
   static bool _isEnabled = false;
+  static String? _lang;
+  static String? _sessionId;
+
+  /// The `request_source` sent when the app passes no `requestSource` (or
+  /// null) to the constructor or [init]. Lableb accepts `'mobile'` or
+  /// `'web'`; an empty string stops sending it.
+  static const String defaultRequestSource = 'mobile';
 
   /// Whether the SDK is currently enabled for the active merchant.
   static bool get isEnabled => _isEnabled;
@@ -58,6 +65,76 @@ class LablebSDK {
       locator.isRegistered<GlobalSettings>()
           ? locator<GlobalSettings>().disableQuantityFilter
           : false;
+
+  /// The language sent as `lang` on search, autocomplete and recommend
+  /// requests, or null when none is sent.
+  static String? get lang => _lang;
+
+  /// Changes the language sent as `lang` on search, autocomplete and
+  /// recommend requests. Pass null or an empty string to stop sending it.
+  ///
+  /// Call this whenever the app's language changes; the next request uses
+  /// the new value. Safe to call at any time, including before the SDK is
+  /// initialized, in which case the value is applied on initialization.
+  ///
+  /// ```dart
+  /// LablebSDK.setLang(locale.languageCode);
+  /// ```
+  static void setLang(String? lang) {
+    _lang = lang;
+    _applyRuntimeOptions();
+  }
+
+  /// The session identifier sent as `session_id` on search, autocomplete and
+  /// recommend requests, or null when none is sent.
+  static String? get sessionId => _sessionId;
+
+  /// Changes the session identifier sent as `session_id` on search,
+  /// autocomplete and recommend requests. Pass null or an empty string to
+  /// stop sending it.
+  ///
+  /// Call this whenever the app starts a new session (e.g. on launch or
+  /// login); the next request uses the new value. Safe to call at any time,
+  /// including before the SDK is initialized, in which case the value is
+  /// applied on initialization.
+  ///
+  /// ```dart
+  /// LablebSDK.setSessionId(sessionId);
+  /// ```
+  static void setSessionId(String? sessionId) {
+    _sessionId = sessionId;
+    _applyRuntimeOptions();
+  }
+
+  /// Re-registers [LablebSdkOptions] with the current runtime values
+  /// ([lang], [sessionId], and [apiKey] when given) so the next request
+  /// picks them up.
+  static void _applyRuntimeOptions({String? apiKey}) {
+    if (!locator.isRegistered<LablebSdkOptions>()) return;
+
+    final o = locator<LablebSdkOptions>();
+    locator.unregister<LablebSdkOptions>();
+    locator.registerSingleton<LablebSdkOptions>(LablebSdkOptions(
+      baseUrl: o.baseUrl,
+      apiKey: apiKey ?? o.apiKey,
+      connectTimeout: o.connectTimeout,
+      receiveTimeout: o.receiveTimeout,
+      sendTimeout: o.sendTimeout,
+      enableLogging: o.enableLogging,
+      authType: o.authType,
+      customHeaderName: o.customHeaderName,
+      defaultHeaders: o.defaultHeaders,
+      zidStoreId: o.zidStoreId,
+      primaryColorHex: o.primaryColorHex,
+      isSandbox: o.isSandbox,
+      isZidIntegration: o.isZidIntegration,
+      platformName: o.platformName,
+      indexName: o.indexName,
+      requestSource: o.requestSource,
+      lang: _lang,
+      sessionId: _sessionId,
+    ));
+  }
 
   /// Global instance used by Zid/AppsBunches integrations.
   static LablebSDK get instance {
@@ -101,7 +178,9 @@ class LablebSDK {
   /// Creates a new [LablebSDK] instance.
   /// 
   /// [baseUrl] - The base URL of the Lableb API (e.g., 'https://api.lableb.com').
-  /// [apiKey] - Your API key for authentication.
+  /// [apiKey] - Your API key. Optional when [platformName] is set: if it is
+  /// omitted (or empty), the SDK uses the project's `searchAPIKey` from the
+  /// Lableb settings endpoint. A key passed here always wins.
   /// [connectTimeout] - Connection timeout duration (default: 30 seconds).
   /// [receiveTimeout] - Receive timeout duration (default: 30 seconds).
   /// [sendTimeout] - Send timeout duration (default: 30 seconds).
@@ -109,9 +188,21 @@ class LablebSDK {
   /// [authType] - Type of authentication to use (default: Bearer token).
   /// [customHeaderName] - Custom header name for API key authentication.
   /// [defaultHeaders] - Additional default headers to include in all requests.
+  /// [requestSource] - Source sent as `request_source` on search,
+  /// autocomplete and recommend requests, and on feedback events that do not
+  /// set their own. Null (or omitted) means [defaultRequestSource]
+  /// (`'mobile'`); pass `'web'` for a web app, or an empty string to stop
+  /// sending it.
+  /// [lang] - Optional language (e.g. `'ar'`) sent as `lang` on search,
+  /// autocomplete and recommend requests. Change it later with [setLang];
+  /// when omitted, the last value passed to [setLang] is kept.
+  /// [sessionId] - Optional session identifier sent as `session_id` on
+  /// search, autocomplete and recommend requests. Change it later with
+  /// [setSessionId]; when omitted, the last value passed to [setSessionId]
+  /// is kept.
   LablebSDK({
     required String baseUrl,
-    required String apiKey,
+    String? apiKey,
     Duration connectTimeout = const Duration(seconds: 30),
     Duration receiveTimeout = const Duration(seconds: 30),
     Duration sendTimeout = const Duration(seconds: 30),
@@ -121,11 +212,16 @@ class LablebSDK {
     Map<String, String>? defaultHeaders,
     String? platformName,
     String indexName = 'index',
+    String? requestSource,
+    String? lang,
+    String? sessionId,
   }) {
+    if (lang != null) _lang = lang;
+    if (sessionId != null) _sessionId = sessionId;
     setupSdkLocator(
       LablebSdkOptions(
         baseUrl: baseUrl,
-        apiKey: apiKey,
+        apiKey: apiKey ?? '',
         connectTimeout: connectTimeout,
         receiveTimeout: receiveTimeout,
         sendTimeout: sendTimeout,
@@ -135,6 +231,11 @@ class LablebSDK {
         defaultHeaders: defaultHeaders,
         platformName: platformName,
         indexName: indexName,
+        // Null falls back to the default so wrappers that forward a nullable
+        // value do not opt out by accident; '' is the explicit opt-out.
+        requestSource: requestSource ?? defaultRequestSource,
+        lang: _lang,
+        sessionId: _sessionId,
       ),
       reset: true,
     );
@@ -149,7 +250,9 @@ class LablebSDK {
     _isEnabled = true;
 
     if (platformName != null && platformName.trim().isNotEmpty) {
-      _loadGlobalSettings(platformName);
+      // Requests await this, so none goes out before settings (and a
+      // settings-provided key) are in place.
+      markSettingsLoading(_loadGlobalSettings(platformName));
     }
   }
 
@@ -159,9 +262,31 @@ class LablebSDK {
   /// Initialize SDK from Zid/AppsBunches JSON configuration.
   ///
   /// This is the preferred entry point for merchant integrations.
+  ///
+  /// `app_key` in [initialJson] is optional: without it the SDK uses the
+  /// project's `searchAPIKey` from the Lableb settings endpoint, and stays
+  /// disabled only if settings provide no key either.
+  ///
+  /// [requestSource] - Source sent as `request_source` on search,
+  /// autocomplete and recommend requests, and on feedback events that do not
+  /// set their own. Null (or omitted) means [defaultRequestSource]
+  /// (`'mobile'`); pass `'web'` for a web app, or an empty string to stop
+  /// sending it.
+  /// [lang] - Optional language (e.g. `'ar'`) sent as `lang` on search,
+  /// autocomplete and recommend requests. Change it later with [setLang];
+  /// when omitted, the last value passed to [setLang] is kept.
+  /// [sessionId] - Optional session identifier sent as `session_id` on
+  /// search, autocomplete and recommend requests. Change it later with
+  /// [setSessionId]; when omitted, the last value passed to [setSessionId]
+  /// is kept.
   static Future<void> init({
     required Map<String, dynamic> initialJson,
+    String? requestSource,
+    String? lang,
+    String? sessionId,
   }) async {
+    if (lang != null) _lang = lang;
+    if (sessionId != null) _sessionId = sessionId;
     final status = initialJson['status'] as bool? ?? false;
     _isEnabled = status;
     if (!status) {
@@ -174,11 +299,6 @@ class LablebSDK {
         (initialJson['primary_color'] as String?)?.trim() ?? '#000000';
     final storeId = initialJson['store_id']?.toString() ?? '';
     final sandboxFlag = initialJson['sandbox'] as bool? ?? false;
-
-    if (apiKey.isEmpty) {
-      _isEnabled = false;
-      return;
-    }
 
     // Mandatory: store 166193 must always use sandbox.
     final isSandbox = sandboxFlag || storeId == '166193';
@@ -197,6 +317,9 @@ class LablebSDK {
         isSandbox: isSandbox,
         isZidIntegration: true,
         platformName: platformName,
+        requestSource: requestSource ?? defaultRequestSource,
+        lang: _lang,
+        sessionId: _sessionId,
       ),
       reset: true,
     );
@@ -209,14 +332,22 @@ class LablebSDK {
       // ignore
     }
 
-    await _loadGlobalSettings(platformName);
+    final loading = _loadGlobalSettings(platformName);
+    markSettingsLoading(loading);
+    await loading;
+
+    if (locator<ApiClientBase>().apiKey.isEmpty) {
+      _isEnabled = false;
+      return;
+    }
 
     LablebSDK._fromLocator();
   }
 
   /// Fetches merchant global settings (recommender + out-of-stock toggles)
   /// from Lableb's settings endpoint, updating the [GlobalSettings] singleton
-  /// on success. Never throws — on failure the existing
+  /// on success. When the app gave no API key, the settings' `searchAPIKey`
+  /// becomes the key. Never throws — on failure the existing
   /// [GlobalSettings.unset] defaults registered by [setupSdkLocator] remain.
   static Future<void> _loadGlobalSettings(String platformName) async {
     try {
@@ -224,6 +355,16 @@ class LablebSDK {
         platformName: platformName,
       );
       updateGlobalSettings(settings);
+
+      final settingsKey = settings.searchApiKey;
+      final client = locator<ApiClientBase>();
+      if (client.apiKey.isEmpty &&
+          settingsKey != null &&
+          settingsKey.isNotEmpty &&
+          client is ApiClient) {
+        client.updateApiKey(settingsKey);
+        _applyRuntimeOptions(apiKey: settingsKey);
+      }
     } catch (_) {
       // ignore
     }

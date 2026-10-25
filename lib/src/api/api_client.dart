@@ -63,7 +63,8 @@ class ApiClient implements ApiClientBase {
   
   /// API key for authentication.
   @override
-  final String apiKey;
+  String get apiKey => _apiKey;
+  String _apiKey;
   
   /// Connection timeout in milliseconds.
   @override
@@ -79,7 +80,7 @@ class ApiClient implements ApiClientBase {
 
   ApiClient({
     required this.baseUrl,
-    required this.apiKey,
+    required String apiKey,
     this.connectTimeout = const Duration(seconds: 30),
     this.receiveTimeout = const Duration(seconds: 30),
     this.sendTimeout = const Duration(seconds: 30),
@@ -87,7 +88,8 @@ class ApiClient implements ApiClientBase {
     AuthType authType = AuthType.bearer,
     String? customHeaderName,
     Map<String, String>? defaultHeaders,
-  }) : _dio = Dio(
+  })  : _apiKey = apiKey,
+        _dio = Dio(
           BaseOptions(
             baseUrl: baseUrl,
             connectTimeout: connectTimeout,
@@ -100,6 +102,7 @@ class ApiClient implements ApiClientBase {
     _dio.interceptors.add(
       AuthInterceptor(
         apiKey: apiKey,
+        apiKeyProvider: () => _apiKey,
         authType: authType,
         customHeaderName: customHeaderName,
       ),
@@ -112,6 +115,12 @@ class ApiClient implements ApiClientBase {
 
     // Add error handling interceptor
     _dio.interceptors.add(ErrorInterceptor());
+  }
+
+  /// Replaces the API key used from the next request on, e.g. once the
+  /// project's search key arrives from the settings endpoint.
+  void updateApiKey(String apiKey) {
+    _apiKey = apiKey;
   }
 
   /// Gets the underlying Dio instance.

@@ -24,6 +24,15 @@ class SearchRequest {
   /// Optional fields to highlight.
   final List<String>? highlightFields;
 
+  /// Optional request source (e.g. `'mobile'`), sent as `request_source`.
+  final String? requestSource;
+
+  /// Optional language (e.g. `'ar'`), sent as `lang`.
+  final String? lang;
+
+  /// Optional session identifier, sent as `session_id`.
+  final String? sessionId;
+
   SearchRequest({
     required this.query,
     this.filters,
@@ -32,6 +41,9 @@ class SearchRequest {
     this.pageSize = 10,
     this.fields,
     this.highlightFields,
+    this.requestSource,
+    this.lang,
+    this.sessionId,
   });
 
   /// Converts the [SearchRequest] to query parameters.
@@ -71,6 +83,18 @@ class SearchRequest {
 
     if (highlightFields != null && highlightFields!.isNotEmpty) {
       params['highlight_fields'] = highlightFields!.join(',');
+    }
+
+    if (requestSource != null && requestSource!.isNotEmpty) {
+      params['request_source'] = requestSource;
+    }
+
+    if (lang != null && lang!.isNotEmpty) {
+      params['lang'] = lang;
+    }
+
+    if (sessionId != null && sessionId!.isNotEmpty) {
+      params['session_id'] = sessionId;
     }
 
     return params;

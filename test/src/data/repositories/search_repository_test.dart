@@ -12,7 +12,13 @@ void main() {
   late MockApiClientBase mockApiClient;
   late SearchRepositoryImpl repository;
 
-  void setOptions({String? platformName, String indexName = 'index'}) {
+  void setOptions({
+    String? platformName,
+    String indexName = 'index',
+    String? requestSource,
+    String? lang,
+    String? sessionId,
+  }) {
     if (locator.isRegistered<LablebSdkOptions>()) {
       locator.unregister<LablebSdkOptions>();
     }
@@ -21,6 +27,9 @@ void main() {
       apiKey: 'test-api-key',
       platformName: platformName,
       indexName: indexName,
+      requestSource: requestSource,
+      lang: lang,
+      sessionId: sessionId,
     ));
   }
 
@@ -178,6 +187,108 @@ void main() {
       expect(result.results.first.data['price'], 63.48);
       expect(result.results.first.data.containsKey('id'), isFalse);
     });
+
+    test('sends request_source when requestSource is configured', () async {
+      setOptions(platformName: 'test-project', requestSource: 'mobile');
+      when(mockApiClient.get(
+        any,
+        queryParameters: anyNamed('queryParameters'),
+      )).thenAnswer((_) async => lablebResponse({'results': []}));
+
+      await repository.search(query: 'laptop');
+
+      final captured = verify(mockApiClient.get(
+        any,
+        queryParameters: captureAnyNamed('queryParameters'),
+      )).captured;
+      expect(captured.single['request_source'], 'mobile');
+    });
+
+    for (final requestSource in [null, '']) {
+      test('omits request_source when requestSource is ${requestSource == null ? 'null' : 'empty'}', () async {
+        setOptions(platformName: 'test-project', requestSource: requestSource);
+        when(mockApiClient.get(
+          any,
+          queryParameters: anyNamed('queryParameters'),
+        )).thenAnswer((_) async => lablebResponse({'results': []}));
+
+        await repository.search(query: 'laptop');
+
+        final captured = verify(mockApiClient.get(
+          any,
+          queryParameters: captureAnyNamed('queryParameters'),
+        )).captured;
+        expect(captured.single.containsKey('request_source'), isFalse);
+      });
+    }
+
+    test('sends lang when lang is configured', () async {
+      setOptions(platformName: 'test-project', lang: 'ar');
+      when(mockApiClient.get(
+        any,
+        queryParameters: anyNamed('queryParameters'),
+      )).thenAnswer((_) async => lablebResponse({'results': []}));
+
+      await repository.search(query: 'laptop');
+
+      final captured = verify(mockApiClient.get(
+        any,
+        queryParameters: captureAnyNamed('queryParameters'),
+      )).captured;
+      expect(captured.single['lang'], 'ar');
+    });
+
+    for (final lang in [null, '']) {
+      test('omits lang when lang is ${lang == null ? 'null' : 'empty'}', () async {
+        setOptions(platformName: 'test-project', lang: lang);
+        when(mockApiClient.get(
+          any,
+          queryParameters: anyNamed('queryParameters'),
+        )).thenAnswer((_) async => lablebResponse({'results': []}));
+
+        await repository.search(query: 'laptop');
+
+        final captured = verify(mockApiClient.get(
+          any,
+          queryParameters: captureAnyNamed('queryParameters'),
+        )).captured;
+        expect(captured.single.containsKey('lang'), isFalse);
+      });
+    }
+
+    test('sends session_id when sessionId is configured', () async {
+      setOptions(platformName: 'test-project', sessionId: 'sess-1');
+      when(mockApiClient.get(
+        any,
+        queryParameters: anyNamed('queryParameters'),
+      )).thenAnswer((_) async => lablebResponse({'results': []}));
+
+      await repository.search(query: 'laptop');
+
+      final captured = verify(mockApiClient.get(
+        any,
+        queryParameters: captureAnyNamed('queryParameters'),
+      )).captured;
+      expect(captured.single['session_id'], 'sess-1');
+    });
+
+    for (final sessionId in [null, '']) {
+      test('omits session_id when sessionId is ${sessionId == null ? 'null' : 'empty'}', () async {
+        setOptions(platformName: 'test-project', sessionId: sessionId);
+        when(mockApiClient.get(
+          any,
+          queryParameters: anyNamed('queryParameters'),
+        )).thenAnswer((_) async => lablebResponse({'results': []}));
+
+        await repository.search(query: 'laptop');
+
+        final captured = verify(mockApiClient.get(
+          any,
+          queryParameters: captureAnyNamed('queryParameters'),
+        )).captured;
+        expect(captured.single.containsKey('session_id'), isFalse);
+      });
+    }
 
     test('propagates errors from the API client', () async {
       when(mockApiClient.get(

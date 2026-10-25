@@ -12,7 +12,11 @@ void main() {
   late MockApiClientBase mockApiClient;
   late FeedbackRepositoryImpl repository;
 
-  void setOptions({String? platformName = 'test-project', String indexName = 'index'}) {
+  void setOptions({
+    String? platformName = 'test-project',
+    String indexName = 'index',
+    String? requestSource,
+  }) {
     if (locator.isRegistered<LablebSdkOptions>()) {
       locator.unregister<LablebSdkOptions>();
     }
@@ -21,6 +25,7 @@ void main() {
       apiKey: 'test-api-key',
       platformName: platformName,
       indexName: indexName,
+      requestSource: requestSource,
     ));
   }
 
@@ -528,5 +533,78 @@ void main() {
         throwsA(isA<Exception>()),
       );
     });
+  });
+
+  group('feedback request_source falls back to the SDK-wide value', () {
+    Future<Map> sentEvent(Future<void> Function() submit) async {
+      when(mockApiClient.post(
+        any,
+        data: anyNamed('data'),
+        queryParameters: anyNamed('queryParameters'),
+      )).thenAnswer((_) async => eventResponse());
+      await submit();
+      final captured = verify(mockApiClient.post(
+        any,
+        data: captureAnyNamed('data'),
+        queryParameters: anyNamed('queryParameters'),
+      )).captured;
+      return (captured.single as List).single as Map;
+    }
+
+    Future<void> search({String? requestSource}) =>
+        repository.submitSearchFeedbackEvent(
+          query: 'product',
+          eventType: SearchFeedbackEventType.click,
+          itemId: 'item-1',
+          itemOrder: 1,
+          requestSource: requestSource,
+        );
+
+    Future<void> autocomplete({String? requestSource}) =>
+        repository.submitAutocompleteFeedbackEvent(
+          query: 'pro',
+          eventType: SearchFeedbackEventType.click,
+          itemId: 'item-1',
+          itemOrder: 1,
+          requestSource: requestSource,
+        );
+
+    Future<void> recommend({String? requestSource}) =>
+        repository.submitRecommendFeedbackEvent(
+          sourceId: '153-en',
+          targetId: '154-ar',
+          requestSource: requestSource,
+        );
+
+    final kinds = {
+      'search': search,
+      'autocomplete': autocomplete,
+      'recommend': recommend,
+    };
+
+    for (final kind in kinds.entries) {
+      test('${kind.key}: uses the SDK-wide value when the event sets none', () async {
+        setOptions(requestSource: 'mobile');
+        final event = await sentEvent(() => kind.value());
+        expect(event['request_source'], 'mobile');
+      });
+
+      test('${kind.key}: a per-event value wins', () async {
+        setOptions(requestSource: 'mobile');
+        final event = await sentEvent(() => kind.value(requestSource: 'web'));
+        expect(event['request_source'], 'web');
+      });
+
+      test('${kind.key}: an empty per-event value opts that event out', () async {
+        setOptions(requestSource: 'mobile');
+        final event = await sentEvent(() => kind.value(requestSource: ''));
+        expect(event.containsKey('request_source'), isFalse);
+      });
+
+      test('${kind.key}: omitted when neither is set', () async {
+        final event = await sentEvent(() => kind.value());
+        expect(event.containsKey('request_source'), isFalse);
+      });
+    }
   });
 }

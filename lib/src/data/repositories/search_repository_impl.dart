@@ -28,6 +28,7 @@ class SearchRepositoryImpl implements SearchRepository {
     int pageSize = 10,
     String handler = 'default',
   }) async {
+    await sdkSettingsReady();
     try {
       final options = locator<LablebSdkOptions>();
       final platformName = options.platformName;
@@ -44,6 +45,9 @@ class SearchRepositoryImpl implements SearchRepository {
         sort: sort,
         page: page,
         pageSize: pageSize,
+        requestSource: options.requestSource,
+        lang: options.lang,
+        sessionId: options.sessionId,
       );
 
       final queryParameters = request.toQueryParameters();

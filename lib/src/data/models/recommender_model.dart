@@ -25,10 +25,21 @@ class RecommenderModel {
   });
 
   /// Creates a [RecommenderModel] from a JSON map.
+  ///
+  /// Lableb returns each recommended document flat (`{"id", "title", ...}`);
+  /// everything but `id`, `score` and `reason` becomes [data]. A nested
+  /// `data` map is used as-is when present.
   factory RecommenderModel.fromJson(Map<String, dynamic> json) {
+    final data = json['data'] is Map<String, dynamic>
+        ? json['data'] as Map<String, dynamic>
+        : (Map<String, dynamic>.from(json)
+          ..remove('id')
+          ..remove('score')
+          ..remove('reason'));
+
     return RecommenderModel(
-      id: json['id'] as String,
-      data: json['data'] as Map<String, dynamic>,
+      id: json['id']?.toString() ?? '',
+      data: data,
       score: json['score'] != null ? (json['score'] as num).toDouble() : null,
       reason: json['reason'] as String?,
     );
