@@ -86,6 +86,10 @@ class RecommendationsBuilder
 
   @override
   Future<List<RecommenderEntity>> send() async {
+    // Wait for the startup settings fetch, as search and autocomplete do:
+    // before it lands hasRecommendation reads false, and an early call would
+    // return [] without ever contacting Lableb.
+    await sdkSettingsReady();
     if (!locator<GlobalSettings>().hasRecommendation) {
       return const <RecommenderEntity>[];
     }
