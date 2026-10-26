@@ -172,6 +172,44 @@ void main() {
     });
   });
 
+  group('recommendations wait for settings', () {
+    test('a call right after construction reaches Lableb', () async {
+      final sdk = build({'searchAPIKey': 'settings-key', 'hasRecommendation': true});
+      apiStub = _Stub({
+        'time': 1,
+        'code': 200,
+        'response': {
+          'found_documents': 1,
+          'results': [
+            {'id': 'rec-1', 'name': 'Rec'},
+          ],
+        },
+      });
+      sdk.apiClient.dio.httpClientAdapter = apiStub;
+
+      // Not awaiting settings first: before 1.1.1 this returned [] with no
+      // request, because hasRecommendation still read the unset default.
+      final recs = await sdk.recommendations().forItem('item-1').send();
+
+      expect(recs.single.id, 'rec-1');
+      expect(recs.single.data['name'], 'Rec');
+      final sent = apiStub.requests.single;
+      expect(sent.path, '/v2/projects/test-project/indices/index/recommend');
+      expect(sent.queryParameters['id'], 'item-1');
+      expect(sent.queryParameters['apikey'], 'settings-key');
+    });
+
+    test('with recommendations off it returns [] and sends nothing', () async {
+      final sdk = build({'searchAPIKey': 'settings-key', 'hasRecommendation': false});
+
+      final recs = await sdk.recommendations().forItem('item-1').send();
+
+      expect(recs, isEmpty);
+      expect(settingsStub.requests, hasLength(1));
+      expect(apiStub.requests, isEmpty);
+    });
+  });
+
   group('AuthInterceptor', () {
     RequestOptions run(AuthInterceptor interceptor) {
       final options = RequestOptions(path: '/x');

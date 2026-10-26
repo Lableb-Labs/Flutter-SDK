@@ -35,7 +35,7 @@ Add this package to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  lableb_flutter_sdk: ^1.1.0
+  lableb_flutter_sdk: ^1.1.1
 ```
 
 Then run:
