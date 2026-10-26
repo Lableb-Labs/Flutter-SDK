@@ -5,6 +5,18 @@ All notable changes to this package are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 1.1.1
+
+### Fixed
+
+- `sdk.recommendations()...send()` now waits for the startup settings fetch
+  (`sdkSettingsReady()`), as search, autocomplete and feedback already do.
+  Before this, a call made right after `LablebSDK(...)` read
+  `hasRecommendation` before settings arrived, so it returned an empty list
+  without contacting Lableb, even on projects with recommendations on. No API
+  change: the first recommendations call can take one settings request
+  longer, exactly like the first search.
+
 ## 1.1.0
 
 ### Added
